@@ -1,0 +1,382 @@
+# AgentLoop — PRD v1.4 (DSL Summary)
+
+> 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
+> 최종 갱신: 2026-03-12
+
+---
+
+## 1. WHAT — 제품 정의
+
+```
+정부지원사업 계획서 작성을 AI Agent와 협업하기 위한 로컬 워크스페이스 도구
+├── 로컬 전용 (localhost, DB 없음, 파일시스템 = 저장소)
+├── 기존 3자리 코드 체계(XYZ_파일명.md) 위에 얹힘
+├── AI Agent가 생성한 문서를 자동 인식/뷰잉
+├── v1.1: 1-Step Master-Detail UI + AI 협업 피드백 루프 + Context Builder
+├── v1.3: 자동 새로고침 + 문서 편집 모드 + 프롬프트 파일 생성
+└── v1.4: 동적 docs_root 설정 + 멀티/싱글 프로젝트 자동 감지
+```
+
+---
+
+## 2. WHO — 사용자
+
+```
+1인 실무자 (gray) — 정부지원사업 계획서를 Claude 등 AI Agent와 협업 작성
+```
+
+---
+
+## 3. ARCH — 아키텍처
+
+```
+┌──────────────────────────────────────┐
+│  React + TS + Vite + TW v4           │  :5173
+│  TanStack Query, Router v7           │
+│  @dnd-kit, react-diff-viewer         │
+├────────── /api proxy ────────────────┤
+│  FastAPI (Python 3.13+)              │  :8066
+│  uv 패키지 관리                       │
+├──────────────────────────────────────┤
+│  File System (docs/)                 │  ← 유일한 저장소
+│  000_index.md = DB 역할               │
+└──────────────────────────────────────┘
+```
+
+---
+
+## 4. DATA — 핵심 데이터 모델
+
+```python
+Project       { folder_name, project_num, project_title, doc_count, last_modified }
+Document      { code, filename, summary, status, category(0~9) }
+WorkLog       { date, content, related_docs }
+OrphanFile    { filename, extension, size_bytes, last_modified }         # v1.1 NEW
+FeedbackRequest { line_number, target_text, instruction }               # v1.1 NEW
+ProjectDetail { ...Project, documents[], worklogs[], orphan_files[], has_index }
+AppConfig     { docs_root, is_valid }                                    # v1.4 UPD
+SkillTemplate { id, name, instruction, createdAt }                      # v1.2 NEW (localStorage)
+CreateDocumentRequest { filename, content }                             # v1.3 NEW
+UpdateDocumentRequest { content }                                       # v1.3 NEW
+UpdateConfigRequest { docs_root }                                       # v1.4 NEW
+DirectoryEntry { name, path }                                           # v1.4 NEW
+BrowseResponse { current_path, parent_path, directories[] }             # v1.4 NEW
+```
+
+**문서 코드 체계:**
+```
+XYZ_파일명.md
+ X = 대분류 (0~9)
+ YZ = 순번 (00~99)
+
+0xx 프로젝트관리 | 1xx RFP/공고분석 | 2xx 기획/전략
+3xx 연구/조사    | 4xx 기술설계     | 5xx 개발내용작성
+6xx 정량지표     | 7xx 시각화/산출물 | 8xx 최종제출문서 | 9xx 참고/기타
+```
+
+**프로젝트 폴더 감지:** `^\d{3}_.+` 패턴 매칭
+**멀티/싱글 자동 감지:**                                                  # v1.4 NEW
+```
+docs_root 하위에 ^\d{3}_.+ 디렉토리 존재? → 멀티 프로젝트 모드
+docs_root.name 자체가 ^\d{3}_.+ 패턴?    → 싱글 프로젝트 모드
+resolve_project_dir(name): 싱글=docs_root, 멀티=docs_root/name
+```
+**index.md 파싱:** 정규식 기반 마크다운 테이블 → Document[] + WorkLog[]
+**Orphan 감지:** 파일시스템 스캔 − index 등록 파일 − 시스템 파일(CLAUDE.md, .DS_Store)
+
+---
+
+## 5. API — 엔드포인트
+
+```
+GET    /api/health                                → { status }
+GET    /api/config                                → { docs_root, is_valid }    # v1.4 UPD
+PUT    /api/config        ← { docs_root }       → { docs_root, is_valid }    # v1.4 NEW
+       # 런타임 docs_root 변경 + config.yaml 저장
+GET    /api/browse?path=                         → BrowseResponse             # v1.4 NEW
+       # 디렉토리 탐색 (path 미지정 시 홈 디렉토리, 숨김 폴더 제외)
+GET    /api/projects                              → Project[]
+POST   /api/projects        ← { num, title }     → { folder_name, message }
+GET    /api/projects/{name}                       → ProjectDetail (orphan_files, has_index 포함)
+GET    /api/projects/{name}/documents             → Document[]
+POST   /api/projects/{name}/documents             → { filename, status }       # v1.3 NEW
+       ← { filename, content }
+       # 프로젝트 디렉토리에 새 문서 파일 생성 (orphan으로 표시)
+GET    /api/projects/{name}/documents/{filename}  → raw markdown (text/plain)
+PUT    /api/projects/{name}/documents/{filename}  → { status }                 # v1.3 NEW
+       ← { content }
+       # 기존 문서 내용 덮어쓰기 (브라우저 편집 모드)
+POST   /api/projects/{name}/documents/{filename}/feedback          # v1.1 NEW
+       ← { line_number, target_text, instruction }
+       → { status: "ok" }
+       # 원본 .md 파일의 line_number 위치에 피드백 블록 자동 삽입
+GET    /api/projects/{name}/worklog               → WorkLog[]
+```
+
+**피드백 삽입 포맷 (마크다운 원본에 주입):**
+```markdown
+> 💡 **[사용자 피드백]**
+> !! 타겟 텍스트: "선택한 텍스트"
+> !! 지시사항: 사용자가 입력한 지시
+```
+
+---
+
+## 6. UI — 화면 구성
+
+```
+[WorkspacePage / — 단일 페이지, 3컬럼 Master-Detail]
+
+URL: /?project={folder_name}&doc={filename}
+
+┌──────────────────────────────────────────────────────────────────┐
+│ [≡] AgentLoop                   [↻][⚙][+ 새 프로젝트]    │
+├─────────┬───────────────────────┬────────────────────────────────┤
+│ LEFT    │ CENTER                │ RIGHT                          │
+│ w-56    │ w-80                  │ flex-1                         │
+│ 접기가능  │                       │                                │
+│         │ 프로젝트명 + 번호      │ [파일명]         [편집/미리보기] │
+│ ⠿ 008   │                       │                                │
+│   BIM   │ ▼ 미분류 문서 (N)      │ MarkdownViewer (미리보기 모드)  │
+│ ⠿ 009   │   ☐ 📄 orphan1.md    │  - rehypeSourceLine 플러그인    │
+│  서울형  │   ☐ 📄 PROMPT_*.md   │  - 텍스트 드래그 → 플로팅 버튼   │
+│ ⠿ 010   │   ☐ 📎 orphan2.docx  │  - 피드백 입력 → .md 자동 삽입   │
+│  소방    │                       │  - 10초 자동 새로고침            │
+│         │ 0xx 프로젝트관리 (2)  │                                │
+│ @dnd-kit│   ☐ 000 index.md      │ ── 또는 ──                      │
+│ 순서변경 │ 1xx RFP분석 (3)       │                                │
+│         │   ☐ 101 공고문요약.md │ DocumentEditor (편집 모드)      │
+│         │                       │  - monospace textarea           │
+│         │ ─────────────────── │  - ⌘S 저장 + 저장 버튼           │
+│         │ [ContextBuilder]      │  - 변경됨/저장됨 상태 표시       │
+│         │  2개 선택      [해제] │  - 자동 새로고침 비활성화        │
+│         │ [비교][프롬프트파일생성]│                                │
+│         │ [템플릿 없음 ▼][⚙관리]│ ── 또는 ──                      │
+│         │ ─────────────────── │                                │
+│         │ ▼ 작업 로그 (N)       │ DiffViewer (Split View)        │
+│         │   03-11 초기화        │  - 체크박스 2개 선택 → [비교]    │
+├─────────┴───────────────────────┴────────────────────────────────┤
+│ [InitProjectModal] — num (3자리) + title → POST /api/projects    │
+│ [SkillTemplateModal] — 스킬 템플릿 CRUD (localStorage)           │
+│ [DirectoryPickerModal] — docs_root 디렉토리 탐색/선택            │  # v1.4 NEW
+│   is_valid=false 시 자동 표시, ⚙ 버튼으로 수동 열기              │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**상태 관리:**
+```
+URL searchParams       → selectedProject, selectedDoc
+localStorage           → sidebar-collapsed, project-order (DnD), skill-templates (F7)
+React state            → compareDoc (Diff 모드), showInitModal, checkedDocs (F6),
+                          isEditing (편집 모드 토글),                    # v1.3 NEW
+                          showDirectoryPicker (설정 모달)                # v1.4 NEW
+TanStack Query         → projects (30s), projectDetail (10s), documentContent (10s), config
+                          refetchInterval 기반 자동 새로고침            # v1.3 NEW
+```
+
+---
+
+## 7. FILES — 프로젝트 구조
+
+```
+agentloop/
+├── backend/
+│   ├── main.py                  # FastAPI + CORS(:5173,:5174) + router 등록
+│   │                            #   + GET /api/config (docs_root 반환)
+│   ├── config.py                # config.yaml → get_docs_root() + set_docs_root()
+│   │                            #   is_single_project_mode(), resolve_project_dir()  # v1.4 NEW
+│   ├── config.yaml              # docs_root 경로 (런타임 변경 시 자동 저장)          # v1.4 UPD
+│   ├── pyproject.toml           # uv, deps, dev script(:8066)
+│   ├── models/schemas.py        # Pydantic: Project, Document, WorkLog,
+│   │                            #   OrphanFile, FeedbackRequest, ProjectDetail,
+│   │                            #   CreateDocumentRequest, UpdateDocumentRequest  # v1.3 NEW
+│   ├── services/
+│   │   ├── index_service.py     # parse_index() — 정규식 md 테이블 파싱
+│   │   ├── project_service.py   # list/get/init project + orphan 통합
+│   │   └── document_service.py  # list docs, get content, get worklogs,
+│   │                            #   detect_orphans(), insert_feedback(),
+│   │                            #   create_document(), update_document_content()  # v1.3 NEW
+│   └── routers/
+│       ├── projects.py          # /api/projects CRUD
+│       ├── documents.py         # /api/projects/{name}/documents + feedback
+│       │                        #   + POST create + PUT update              # v1.3 NEW
+│       └── config.py            # PUT /api/config + GET /api/browse         # v1.4 NEW
+│
+├── frontend/
+│   ├── vite.config.ts           # proxy /api → :8066, tailwindcss plugin
+│   ├── package.json             # react 19, @dnd-kit, react-diff-viewer-continued
+│   └── src/
+│       ├── api/client.ts        # fetch 래퍼 + TS 인터페이스 + fetchConfig()
+│       │                        #   + createDocument(), updateDocumentContent()  # v1.3 NEW
+│       │                        #   + updateConfig(), browsePath()               # v1.4 NEW
+│       ├── App.tsx              # → WorkspacePage (단일 렌더)
+│       ├── plugins/
+│       │   └── rehypeSourceLine.ts  # HTML data-source-line 속성 주입
+│       ├── hooks/
+│       │   ├── useProjectOrder.ts   # DnD 순서 localStorage 관리
+│       │   └── useSkillTemplates.ts # 스킬 템플릿 CRUD localStorage 관리   # v1.2 NEW
+│       ├── pages/
+│       │   └── WorkspacePage.tsx     # 3컬럼 Master-Detail 메인 페이지
+│       │                            #   + refetchInterval, 새로고침 핸들러  # v1.3 NEW
+│       │                            #   + config 쿼리, DirectoryPickerModal 연동  # v1.4 NEW
+│       └── components/
+│           ├── AppHeader.tsx         # 상단 바 (≡ 토글 + ↻ 새로고침 + ⚙설정 + 새 프로젝트) # v1.4 UPD
+│           ├── ProjectListItem.tsx   # 사이드바 프로젝트 항목 + useSortable 드래그 핸들
+│           ├── ProjectSidebar.tsx    # LEFT: @dnd-kit 프로젝트 목록 + 접기
+│           ├── DocumentPanel.tsx     # CENTER: Orphan + DocList + ContextBuilder + WorkLog
+│           ├── OrphanSection.tsx     # 미분류 문서 섹션 (F3) + 체크박스
+│           ├── DocumentList.tsx      # 대분류(0~9)별 그룹핑 + hideEmpty + 체크박스
+│           ├── ContextBuilder.tsx    # 문서 장바구니: 프롬프트 파일 생성 + 비교 버튼  # v1.3 UPD
+│           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
+│           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
+│           ├── WorkLog.tsx           # 작업 로그 표시
+│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환     # v1.3 UPD
+│           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장)      # v1.3 NEW
+│           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백
+│           │                        #   + 10초 자동 새로고침               # v1.3 UPD
+│           ├── FeedbackPopover.tsx   # 텍스트 선택 → 플로팅 버튼 → 지시 입력
+│           ├── DiffViewer.tsx        # 두 문서 Split View 비교
+│           ├── InitProjectModal.tsx  # 프로젝트 생성 모달
+│           └── DirectoryPickerModal.tsx # docs_root 디렉토리 탐색/선택 모달  # v1.4 NEW
+│
+└── docs/                        # 기획/설계 문서 (이 파일 포함)
+```
+
+---
+
+## 8. STATUS — 구현 상태
+
+### Phase 1 (코어 워크스페이스) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F1. 1-Step Master-Detail | ✅ | 3컬럼 단일 페이지, URL searchParams 동기화 |
+| F2. 프로젝트 관리 + DnD | ✅ | 초기화 모달 + @dnd-kit 순서 변경, localStorage 저장 |
+| F3. 미분류 문서 감지 | ✅ | 파일시스템 vs index.md 비교, OrphanSection 컴포넌트 |
+
+### Phase 2 (AI 협업 피드백 루프) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F4. 인라인 피드백 | ✅ | 텍스트 드래그 → 플로팅 버튼 → .md 파일 자동 주입, 포스트잇 렌더링 |
+| F5. Diff 뷰어 | ✅ | 체크박스 2개 선택 → [비교] 버튼 또는 Shift+클릭, Split View |
+
+### Phase 3 (프롬프트 엔지니어링 자동화) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F6. Context Builder | ✅ | 문서 체크박스 → PROMPT_*.md 파일 생성 (orphan으로 Agent가 직접 읽기) |
+| F7. 스킬 템플릿 시스템 | ✅ | localStorage CRUD, 드롭다운 선택 → 프롬프트 생성 시 instruction 자동 포함 |
+
+### Phase 4 (편의성 개선) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F8. 자동/수동 새로고침 | ✅ | TanStack Query refetchInterval (프로젝트 30s, 문서 10s) + 헤더 ↻ 버튼 |
+| F9. 스킬 템플릿 버튼 가시성 | ✅ | 기어 아이콘 확대 + "관리" 라벨 + hover 배경색 |
+| F10. 프롬프트 파일 생성 | ✅ | 클립보드 복사 → PROMPT_YYYYMMDD_HHmmss.md 파일 생성, orphan 섹션 즉시 반영 |
+| F11. 문서 편집 모드 | ✅ | ViewerPanel 편집/미리보기 토글, DocumentEditor (textarea + ⌘S), PUT API |
+
+### Phase 5 (독립 운영) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F12. 동적 docs_root 설정 | ✅ | PUT /api/config, GET /api/browse, DirectoryPickerModal, config.yaml 자동 저장 |
+| F13. 멀티/싱글 프로젝트 자동 감지 | ✅ | is_single_project_mode(), resolve_project_dir() — 프론트 변경 없이 백엔드 자동 판별 |
+
+---
+
+## 9. RUN — 실행 방법
+
+```bash
+# Backend
+cd backend && uv sync && uv run uvicorn main:app --reload --port 8066
+
+# Frontend
+cd frontend && npm install && npm run dev
+
+# → http://localhost:5173
+```
+
+---
+
+## 10. DEPS — 의존성 요약
+
+```
+Backend:  fastapi, uvicorn, pyyaml, python-multipart  (dev: httpx)
+Frontend: react 19, react-router-dom 7, @tanstack/react-query 5,
+          react-markdown 10, remark-gfm 4, rehype-highlight 7,
+          @dnd-kit/core + sortable + modifiers + utilities,
+          react-diff-viewer-continued 4,
+          tailwindcss 4, vite 7
+Runtime:  Python 3.13+, Node 18+, uv
+```
+
+---
+
+## 11. DIFF from v1.0 — 변경 이력
+
+```
+v1.0 → v1.1 주요 변경:
+├── UI: 2-Step (Dashboard → Project) → 1-Step 3컬럼 Master-Detail
+├── 삭제: Dashboard.tsx, Project.tsx, ProjectCard.tsx
+├── 신규: WorkspacePage, ProjectSidebar, DocumentPanel, ViewerPanel,
+│         OrphanSection, AppHeader, ProjectListItem,
+│         FeedbackPopover, DiffViewer, rehypeSourceLine, useProjectOrder
+├── Backend: OrphanFile + FeedbackRequest 모델, detect_orphans(),
+│            insert_feedback(), POST .../feedback 엔드포인트
+├── 의존성 추가: @hello-pangea/dnd, react-diff-viewer-continued
+└── URL 체계: /project/:name → /?project=X&doc=Y (searchParams)
+
+v1.1 → v1.2 주요 변경:
+├── DnD: @hello-pangea/dnd → @dnd-kit (React 19 StrictMode 호환)
+│         ProjectListItem에 6점 드래그 핸들 추가
+├── F5 개선: 체크박스 2개 선택 시 [비교] 버튼 노출 (Shift+클릭도 유지)
+├── F6 신규: ContextBuilder — 문서 체크박스 → @파일경로 클립보드 복사
+│         DocumentList, OrphanSection에 체크박스 추가
+│         DocumentPanel에 checkedDocs 상태 관리
+├── F7 신규: 스킬 템플릿 시스템 (localStorage CRUD)
+│         useSkillTemplates 훅, SkillTemplateSelector, SkillTemplateModal
+├── Backend: GET /api/config 엔드포인트 추가 (docs_root 반환)
+├── Frontend: fetchConfig() + AppConfig 인터페이스 추가
+└── 의존성 변경: -@hello-pangea/dnd, +@dnd-kit/core,sortable,modifiers,utilities
+
+v1.2 → v1.3 주요 변경:
+├── F8: 자동 새로고침 — TanStack Query refetchInterval 적용
+│       projects 30초, projectDetail/documentContent 10초
+│       AppHeader에 수동 새로고침 ↻ 버튼 (fetching 시 spin 애니메이션)
+├── F9: 스킬 템플릿 관리 버튼 가시성 향상
+│       기어 아이콘 text-base + "관리" 라벨 + hover:bg-indigo-50
+├── F10: 프롬프트 파일 생성 — 클립보드 복사 → .md 파일 생성으로 변경
+│        ContextBuilder useMutation, PROMPT_YYYYMMDD_HHmmss.md 포맷
+│        Backend POST /api/projects/{name}/documents 엔드포인트
+│        create_document() 서비스 (경로 조작 방지, 중복 파일 체크)
+├── F11: 문서 편집 모드 — ViewerPanel 편집/미리보기 토글
+│        신규 DocumentEditor 컴포넌트 (monospace textarea)
+│        ⌘S/Ctrl+S 키보드 저장, 변경됨/저장됨 상태 표시
+│        편집 중 refetchInterval 자동 비활성화
+│        Backend PUT /api/projects/{name}/documents/{filename} 엔드포인트
+│        update_document_content() 서비스
+├── Backend 모델 추가: CreateDocumentRequest, UpdateDocumentRequest
+├── Frontend API 추가: createDocument(), updateDocumentContent()
+└── WorkspacePage main 영역 overflow-y-auto → overflow-hidden
+
+v1.3 → v1.4 주요 변경:
+├── F12: 동적 docs_root 설정
+│       config.py: 런타임 상태(_runtime_docs_root) + set_docs_root() + is_docs_root_valid()
+│       config.yaml 자동 저장 (_save_config)
+│       신규 routers/config.py: PUT /api/config, GET /api/browse
+│       신규 Pydantic 모델: UpdateConfigRequest, DirectoryEntry, BrowseResponse
+│       GET /api/config 응답에 is_valid 필드 추가
+│       신규 DirectoryPickerModal: 디렉토리 탐색 + breadcrumb + 직접 입력 + 선택
+│       AppHeader에 ⚙ 설정 버튼 추가
+│       WorkspacePage: config useQuery + is_valid=false 시 모달 자동 표시
+│       Frontend API: updateConfig(), browsePath()
+├── F13: 멀티/싱글 프로젝트 자동 감지
+│       config.py: is_single_project_mode(), resolve_project_dir()
+│       project_service.py: list_projects() 싱글 모드 분기, _build_project() 추출
+│       document_service.py: 7개 함수 모두 resolve_project_dir() 사용으로 통일
+│       멀티: docs_root 하위에 프로젝트 폴더 → 기존 동작
+│       싱글: docs_root 자체가 프로젝트 → 프로젝트 1개로 표시
+└── 설정 변경 시 URL searchParams 초기화 (이전 프로젝트 참조 방지)
+```
