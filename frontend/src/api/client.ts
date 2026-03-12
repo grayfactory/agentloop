@@ -124,6 +124,19 @@ export async function createDocument(
   return res.json();
 }
 
+export async function deleteDocument(
+  projectName: string,
+  filename: string,
+): Promise<void> {
+  const res = await fetch(`${BASE}/projects/${projectName}/documents/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '문서 삭제 실패');
+  }
+}
+
 export async function updateDocumentContent(
   projectName: string,
   filename: string,

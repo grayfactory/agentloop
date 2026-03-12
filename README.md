@@ -22,6 +22,7 @@
 | 4 | 문서 편집 모드 | 편집/미리보기 토글, textarea + ⌘S 저장 |
 | 5 | 동적 docs_root 설정 | DirectoryPickerModal로 디렉토리 탐색/선택, config.yaml 자동 저장 |
 | 5 | 멀티/싱글 프로젝트 자동 감지 | docs_root 구조에 따라 백엔드 자동 판별 |
+| 6 | 문서 생성/삭제 | "+ 새 문서" 버튼 (.md 자동, ⌘Enter) + 삭제 확인 모달, DELETE API |
 
 ## 기술 스택
 
@@ -82,6 +83,8 @@ agentloop/
 │           ├── SkillTemplateSelector.tsx
 │           ├── SkillTemplateModal.tsx
 │           ├── InitProjectModal.tsx
+│           ├── CreateDocumentModal.tsx
+│           ├── DeleteConfirmModal.tsx
 │           └── DirectoryPickerModal.tsx
 │
 └── docs/                        # 기획/설계 문서
@@ -136,6 +139,7 @@ docs_root: "/path/to/docs"
 | POST | `/api/projects/{name}/documents` | 문서 생성 |
 | GET | `/api/projects/{name}/documents/{filename}` | 문서 내용 (raw md) |
 | PUT | `/api/projects/{name}/documents/{filename}` | 문서 내용 수정 |
+| DELETE | `/api/projects/{name}/documents/{filename}` | 문서 삭제 |
 | POST | `/api/projects/{name}/documents/{filename}/feedback` | 인라인 피드백 삽입 |
 | GET | `/api/projects/{name}/worklog` | 작업 로그 |
 

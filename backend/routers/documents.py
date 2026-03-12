@@ -9,6 +9,7 @@ from models.schemas import (
 )
 from services.document_service import (
     create_document,
+    delete_document,
     get_document_content,
     get_worklogs,
     insert_feedback,
@@ -50,6 +51,17 @@ def create_document_endpoint(name: str, req: CreateDocumentRequest):
         raise HTTPException(status_code=404, detail=str(e))
     except FileExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/documents/{filename}")
+def delete_document_endpoint(name: str, filename: str):
+    try:
+        delete_document(name, filename)
+        return {"status": "deleted"}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

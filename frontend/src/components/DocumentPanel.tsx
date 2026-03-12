@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectDetail } from '../api/client';
 import DocumentList from './DocumentList';
 import OrphanSection from './OrphanSection';
 import WorkLog from './WorkLog';
 import ContextBuilder from './ContextBuilder';
+import CreateDocumentModal from './CreateDocumentModal';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 interface Props {
   projectDetail: ProjectDetail | null;
@@ -20,8 +23,11 @@ export default function DocumentPanel({
   compareDoc,
   onSelectCompare,
 }: Props) {
+  const queryClient = useQueryClient();
   const [showWorklog, setShowWorklog] = useState(true);
   const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useEffect(() => {
     setCheckedDocs(new Set());
@@ -56,9 +62,17 @@ export default function DocumentPanel({
   return (
     <div className="flex flex-col h-full">
       <div className="px-3 py-2 border-b border-gray-100">
-        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-          {projectDetail.project_num} {projectDetail.project_title}
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+            {projectDetail.project_num} {projectDetail.project_title}
+          </h3>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+          >
+            + 새 문서
+          </button>
+        </div>
         {compareDoc && (
           <div className="mt-1 flex items-center gap-1">
             <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
@@ -82,6 +96,7 @@ export default function DocumentPanel({
           selectedDoc={selectedDoc}
           checkedDocs={checkedDocs}
           onToggleCheck={handleToggleCheck}
+          onDelete={(f) => setDeleteTarget(f)}
         />
         <DocumentList
           documents={projectDetail.documents}
@@ -90,6 +105,7 @@ export default function DocumentPanel({
           hideEmpty
           checkedDocs={checkedDocs}
           onToggleCheck={handleToggleCheck}
+          onDelete={(f) => setDeleteTarget(f)}
         />
       </div>
 
@@ -118,6 +134,23 @@ export default function DocumentPanel({
           </div>
         )}
       </div>
+
+      {showCreateModal && (
+        <CreateDocumentModal
+          projectName={projectDetail.folder_name}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => queryClient.invalidateQueries({ queryKey: ['project', projectDetail.folder_name] })}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteConfirmModal
+          projectName={projectDetail.folder_name}
+          filename={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => queryClient.invalidateQueries({ queryKey: ['project', projectDetail.folder_name] })}
+        />
+      )}
     </div>
   );
 }

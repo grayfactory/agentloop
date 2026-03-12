@@ -8,9 +8,10 @@ interface Props {
   selectedDoc: string | null;
   checkedDocs?: Set<string>;
   onToggleCheck?: (filename: string) => void;
+  onDelete?: (filename: string) => void;
 }
 
-export default function OrphanSection({ orphanFiles, hasIndex, onSelect, selectedDoc, checkedDocs, onToggleCheck }: Props) {
+export default function OrphanSection({ orphanFiles, hasIndex, onSelect, selectedDoc, checkedDocs, onToggleCheck, onDelete }: Props) {
   const [expanded, setExpanded] = useState(true);
 
   if (orphanFiles.length === 0 && hasIndex) return null;
@@ -34,7 +35,7 @@ export default function OrphanSection({ orphanFiles, hasIndex, onSelect, selecte
           {expanded && (
             <ul className="space-y-0.5">
               {orphanFiles.map((file) => (
-                <li key={file.filename} className="flex items-center gap-1">
+                <li key={file.filename} className="group/item flex items-center gap-1">
                   {checkedDocs && onToggleCheck && (
                     <input
                       type="checkbox"
@@ -56,6 +57,17 @@ export default function OrphanSection({ orphanFiles, hasIndex, onSelect, selecte
                     </span>
                     {file.filename}
                   </button>
+                  {onDelete && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(file.filename); }}
+                      className="shrink-0 p-1 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover/item:opacity-100"
+                      title="삭제"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      </svg>
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

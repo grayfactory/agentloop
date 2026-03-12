@@ -76,6 +76,26 @@ def create_document(project_name: str, filename: str, content: str) -> str:
     return filename
 
 
+def delete_document(project_name: str, filename: str) -> str:
+    """Delete a document file from the project directory."""
+    project_dir = resolve_project_dir(project_name)
+    if not project_dir.exists():
+        raise FileNotFoundError(f"프로젝트를 찾을 수 없습니다: {project_name}")
+
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise ValueError(f"잘못된 파일명입니다: {filename}")
+
+    if filename in SYSTEM_FILES:
+        raise ValueError(f"시스템 파일은 삭제할 수 없습니다: {filename}")
+
+    file_path = project_dir / filename
+    if not file_path.exists():
+        raise FileNotFoundError(f"파일을 찾을 수 없습니다: {filename}")
+
+    file_path.unlink()
+    return "ok"
+
+
 def update_document_content(project_name: str, filename: str, content: str) -> str:
     """Overwrite existing document content."""
     file_path = resolve_project_dir(project_name) / filename

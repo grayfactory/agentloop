@@ -1,4 +1,4 @@
-# AgentLoop — PRD v1.4 (DSL Summary)
+# AgentLoop — PRD v1.5 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
 > 최종 갱신: 2026-03-12
@@ -14,7 +14,8 @@
 ├── AI Agent가 생성한 문서를 자동 인식/뷰잉
 ├── v1.1: 1-Step Master-Detail UI + AI 협업 피드백 루프 + Context Builder
 ├── v1.3: 자동 새로고침 + 문서 편집 모드 + 프롬프트 파일 생성
-└── v1.4: 동적 docs_root 설정 + 멀티/싱글 프로젝트 자동 감지
+├── v1.4: 동적 docs_root 설정 + 멀티/싱글 프로젝트 자동 감지
+└── v1.5: 문서 생성/삭제 UI + DELETE API
 ```
 
 ---
@@ -106,6 +107,8 @@ GET    /api/projects/{name}/documents/{filename}  → raw markdown (text/plain)
 PUT    /api/projects/{name}/documents/{filename}  → { status }                 # v1.3 NEW
        ← { content }
        # 기존 문서 내용 덮어쓰기 (브라우저 편집 모드)
+DELETE /api/projects/{name}/documents/{filename}  → { status }                 # v1.5 NEW
+       # 문서 파일 삭제 (시스템 파일 보호, 경로 조작 방지)
 POST   /api/projects/{name}/documents/{filename}/feedback          # v1.1 NEW
        ← { line_number, target_text, instruction }
        → { status: "ok" }
@@ -136,6 +139,7 @@ URL: /?project={folder_name}&doc={filename}
 │ w-56    │ w-80                  │ flex-1                         │
 │ 접기가능  │                       │                                │
 │         │ 프로젝트명 + 번호      │ [파일명]         [편집/미리보기] │
+│         │           [+ 새 문서]  │                                │
 │ ⠿ 008   │                       │                                │
 │   BIM   │ ▼ 미분류 문서 (N)      │ MarkdownViewer (미리보기 모드)  │
 │ ⠿ 009   │   ☐ 📄 orphan1.md    │  - rehypeSourceLine 플러그인    │
@@ -157,6 +161,9 @@ URL: /?project={folder_name}&doc={filename}
 │         │   03-11 초기화        │  - 체크박스 2개 선택 → [비교]    │
 ├─────────┴───────────────────────┴────────────────────────────────┤
 │ [InitProjectModal] — num (3자리) + title → POST /api/projects    │
+│ [CreateDocumentModal] — 파일명(.md 자동) + 내용 → POST /documents │  # v1.5 NEW
+│   ⌘Enter 단축키 생성, .md 확장자 자동 추가, autoFocus            │
+│ [DeleteConfirmModal] — 확인 → DELETE /documents/{filename}       │  # v1.5 NEW
 │ [SkillTemplateModal] — 스킬 템플릿 CRUD (localStorage)           │
 │ [DirectoryPickerModal] — docs_root 디렉토리 탐색/선택            │  # v1.4 NEW
 │   is_valid=false 시 자동 표시, ⚙ 버튼으로 수동 열기              │
@@ -169,7 +176,8 @@ URL searchParams       → selectedProject, selectedDoc
 localStorage           → sidebar-collapsed, project-order (DnD), skill-templates (F7)
 React state            → compareDoc (Diff 모드), showInitModal, checkedDocs (F6),
                           isEditing (편집 모드 토글),                    # v1.3 NEW
-                          showDirectoryPicker (설정 모달)                # v1.4 NEW
+                          showDirectoryPicker (설정 모달),               # v1.4 NEW
+                          showCreateModal, deleteTarget (문서 생성/삭제)  # v1.5 NEW
 TanStack Query         → projects (30s), projectDetail (10s), documentContent (10s), config
                           refetchInterval 기반 자동 새로고침            # v1.3 NEW
 ```
@@ -195,11 +203,12 @@ agentloop/
 │   │   ├── project_service.py   # list/get/init project + orphan 통합
 │   │   └── document_service.py  # list docs, get content, get worklogs,
 │   │                            #   detect_orphans(), insert_feedback(),
-│   │                            #   create_document(), update_document_content()  # v1.3 NEW
+│   │                            #   create_document(), update_document_content(),  # v1.3 NEW
+│   │                            #   delete_document()                              # v1.5 NEW
 │   └── routers/
 │       ├── projects.py          # /api/projects CRUD
 │       ├── documents.py         # /api/projects/{name}/documents + feedback
-│       │                        #   + POST create + PUT update              # v1.3 NEW
+│       │                        #   + POST create + PUT update + DELETE     # v1.3/v1.5
 │       └── config.py            # PUT /api/config + GET /api/browse         # v1.4 NEW
 │
 ├── frontend/
@@ -208,6 +217,7 @@ agentloop/
 │   └── src/
 │       ├── api/client.ts        # fetch 래퍼 + TS 인터페이스 + fetchConfig()
 │       │                        #   + createDocument(), updateDocumentContent()  # v1.3 NEW
+│       │                        #   + deleteDocument()                          # v1.5 NEW
 │       │                        #   + updateConfig(), browsePath()               # v1.4 NEW
 │       ├── App.tsx              # → WorkspacePage (단일 렌더)
 │       ├── plugins/
@@ -224,8 +234,9 @@ agentloop/
 │           ├── ProjectListItem.tsx   # 사이드바 프로젝트 항목 + useSortable 드래그 핸들
 │           ├── ProjectSidebar.tsx    # LEFT: @dnd-kit 프로젝트 목록 + 접기
 │           ├── DocumentPanel.tsx     # CENTER: Orphan + DocList + ContextBuilder + WorkLog
-│           ├── OrphanSection.tsx     # 미분류 문서 섹션 (F3) + 체크박스
-│           ├── DocumentList.tsx      # 대분류(0~9)별 그룹핑 + hideEmpty + 체크박스
+│           │                        #   + 새 문서 버튼, 생성/삭제 모달 연동    # v1.5 UPD
+│           ├── OrphanSection.tsx     # 미분류 문서 섹션 (F3) + 체크박스 + 삭제 버튼  # v1.5 UPD
+│           ├── DocumentList.tsx      # 대분류(0~9)별 그룹핑 + hideEmpty + 체크박스 + 삭제 버튼  # v1.5 UPD
 │           ├── ContextBuilder.tsx    # 문서 장바구니: 프롬프트 파일 생성 + 비교 버튼  # v1.3 UPD
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
@@ -237,6 +248,8 @@ agentloop/
 │           ├── FeedbackPopover.tsx   # 텍스트 선택 → 플로팅 버튼 → 지시 입력
 │           ├── DiffViewer.tsx        # 두 문서 Split View 비교
 │           ├── InitProjectModal.tsx  # 프로젝트 생성 모달
+│           ├── CreateDocumentModal.tsx  # 문서 생성 모달 (파일명+내용)       # v1.5 NEW
+│           ├── DeleteConfirmModal.tsx   # 문서 삭제 확인 다이얼로그          # v1.5 NEW
 │           └── DirectoryPickerModal.tsx # docs_root 디렉토리 탐색/선택 모달  # v1.4 NEW
 │
 └── docs/                        # 기획/설계 문서 (이 파일 포함)
@@ -283,6 +296,13 @@ agentloop/
 |------|------|------|
 | F12. 동적 docs_root 설정 | ✅ | PUT /api/config, GET /api/browse, DirectoryPickerModal, config.yaml 자동 저장 |
 | F13. 멀티/싱글 프로젝트 자동 감지 | ✅ | is_single_project_mode(), resolve_project_dir() — 프론트 변경 없이 백엔드 자동 판별 |
+
+### Phase 6 (문서 관리) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F14. 문서 생성 UI | ✅ | DocumentPanel "+ 새 문서" 버튼 → CreateDocumentModal (파일명+내용, .md 자동, ⌘Enter) |
+| F15. 문서 삭제 | ✅ | DELETE API + 문서/orphan 항목 hover 시 삭제 버튼 → DeleteConfirmModal 확인 |
 
 ---
 
@@ -379,4 +399,20 @@ v1.3 → v1.4 주요 변경:
 │       멀티: docs_root 하위에 프로젝트 폴더 → 기존 동작
 │       싱글: docs_root 자체가 프로젝트 → 프로젝트 1개로 표시
 └── 설정 변경 시 URL searchParams 초기화 (이전 프로젝트 참조 방지)
+
+v1.4 → v1.5 주요 변경:
+├── F14: 문서 생성 UI
+│       신규 CreateDocumentModal: 파일명 + 내용(선택) 입력 → POST /documents
+│       DocumentPanel 헤더에 "+ 새 문서" 버튼 추가
+│       기존 createDocument() API 활용 (새 UI만 추가)
+│       .md 확장자 미입력 시 자동 추가, ⌘Enter/Ctrl+Enter 단축키, autoFocus
+├── F15: 문서 삭제
+│       Backend: delete_document() 서비스 (시스템 파일 보호, 경로 조작 방지)
+│       Backend: DELETE /api/projects/{name}/documents/{filename} 엔드포인트
+│       신규 DeleteConfirmModal: 삭제 확인 다이얼로그
+│       DocumentList, OrphanSection에 hover 시 삭제 버튼 추가
+│       Frontend API: deleteDocument()
+├── DocumentPanel에 showCreateModal, deleteTarget 상태 추가
+│       queryClient.invalidateQueries() 연동으로 삭제/생성 후 즉시 반영
+└── 컴포넌트 수: 17 → 19 (CreateDocumentModal, DeleteConfirmModal 추가)
 ```
