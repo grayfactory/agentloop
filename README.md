@@ -29,7 +29,7 @@
 |------|------|
 | Backend | FastAPI (Python 3.13+), uv |
 | Frontend | React 19 + TypeScript + Vite 7 |
-| 스타일링 | Tailwind CSS v4 |
+| 스타일링 | Tailwind CSS v4 + @tailwindcss/typography |
 | 상태관리 | TanStack Query 5, React Router v7 |
 | MD 렌더링 | react-markdown + remark-gfm + rehype-highlight |
 | DnD | @dnd-kit/core + sortable |
