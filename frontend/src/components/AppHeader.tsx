@@ -17,10 +17,7 @@ export default function AppHeader({ onToggleSidebar, onCreateProject, onRefresh,
         >
           &#9776;
         </button>
-        <h1 className="text-sm font-bold text-gray-800 tracking-tight flex items-center gap-1.5">
-          AgentLoop
-          <img src="/logo.png" alt="AgentLoop" className="h-5 w-5" />
-        </h1>
+        <h1 className="text-sm font-bold text-gray-800 tracking-tight">AgentLoop</h1>
       </div>
       <div className="flex items-center gap-2">
         <button
