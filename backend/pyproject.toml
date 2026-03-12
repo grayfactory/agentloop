@@ -10,9 +10,6 @@ dependencies = [
     "python-multipart",
 ]
 
-[project.scripts]
-dev = "uvicorn main:app --reload --port 8066"
-
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
