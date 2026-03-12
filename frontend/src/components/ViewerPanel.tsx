@@ -56,7 +56,7 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
           filename={filename}
         />
       ) : (
-        <div className="flex-1 overflow-y-auto p-8 max-w-4xl">
+        <div className="flex-1 overflow-y-auto p-8 max-w-4xl bg-white">
           <MarkdownViewer projectName={projectName} filename={filename} />
         </div>
       )}
