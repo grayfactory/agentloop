@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import { fetchDocumentContent } from '../api/client';
 import rehypeSourceLine from '../plugins/rehypeSourceLine';
 import FeedbackPopover from './FeedbackPopover';
@@ -36,10 +37,10 @@ export default function MarkdownViewer({ projectName, filename }: Props) {
 
   return (
     <div className="relative">
-      <div className="markdown-body">
+      <div className="prose prose-slate max-w-none prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2 prose-blockquote:border-indigo-500 prose-pre:bg-slate-50 prose-pre:border prose-pre:border-gray-200 prose-pre:rounded-lg prose-th:bg-gray-50">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeSourceLine]}
+          rehypePlugins={[rehypeHighlight, rehypeSourceLine]}
         >
           {content || ''}
         </ReactMarkdown>
