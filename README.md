@@ -39,6 +39,7 @@
 
 ```
 agentloop/
+├── package.json             # 루트 실행 스크립트 (concurrently)
 ├── backend/
 │   ├── main.py                  # FastAPI + CORS + router 등록
 │   ├── config.py                # config.yaml → get_docs_root() + set_docs_root()
@@ -94,23 +95,22 @@ agentloop/
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/)
 
-### Backend
+### 실행 (루트에서)
 
 ```bash
-cd backend
-uv sync
-uv run uvicorn main:app --reload --port 8066
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
+cd backend && uv sync && cd ..   # 최초 1회
+npm install                       # 최초 1회
+npm run dev                       # backend + frontend 동시 실행
 ```
 
 → http://localhost:5173 접속
+
+### 개별 실행
+
+```bash
+npm run dev:backend    # backend만 (:8066)
+npm run dev:frontend   # frontend만 (:5173)
+```
 
 ## 설정
 
