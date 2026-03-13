@@ -79,6 +79,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 
 ## NOTES
 
+- **ViewerPanel scroll** — 자식 뷰(MarkdownViewer, DiffViewer 등)는 반드시 `h-full overflow-y-auto` 래퍼 안에 렌더해야 함. 부모 `<main>`이 `overflow-hidden`이라 래퍼 없으면 콘텐츠 확장 시 스크롤 불가.
 - **No tests** — ESLint + TypeScript strict mode are the only quality checks
 - **Vite proxy** — `/api` → `localhost:8066`; no CORS config needed in dev
 - **QueryClient staleTime** — 30s default (set in `main.tsx`)

@@ -26,11 +26,13 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
 
   if (compareFilename) {
     return (
-      <DiffViewer
-        projectName={projectName}
-        oldFilename={filename}
-        newFilename={compareFilename}
-      />
+      <div className="h-full overflow-y-auto">
+        <DiffViewer
+          projectName={projectName}
+          oldFilename={filename}
+          newFilename={compareFilename}
+        />
+      </div>
     );
   }
 
