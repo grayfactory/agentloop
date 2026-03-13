@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import MarkdownViewer from './MarkdownViewer';
 import DiffViewer from './DiffViewer';
 import DocumentEditor from './DocumentEditor';
@@ -10,11 +11,22 @@ interface Props {
 }
 
 export default function ViewerPanel({ projectName, filename, compareFilename }: Props) {
+  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setIsEditing(false);
   }, [projectName, filename]);
+
+  const handleCopy = useCallback(async () => {
+    if (!projectName || !filename) return;
+    const content = queryClient.getQueryData<string>(['doc', projectName, filename]);
+    if (!content) return;
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [queryClient, projectName, filename]);
 
   if (!projectName || !filename) {
     return (
@@ -40,16 +52,30 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-100 shrink-0">
         <span className="text-xs text-gray-500 font-medium truncate">{filename}</span>
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-            isEditing
-              ? 'bg-indigo-100 text-indigo-700'
-              : 'text-gray-500 hover:bg-gray-100'
-          }`}
-        >
-          {isEditing ? '미리보기' : '편집'}
-        </button>
+        <div className="flex items-center gap-1.5">
+          {!isEditing && (
+            <button
+              onClick={handleCopy}
+              className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                copied
+                  ? 'bg-green-100 text-green-700'
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              {copied ? '복사됨!' : '복사'}
+            </button>
+          )}
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+              isEditing
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            {isEditing ? '미리보기' : '편집'}
+          </button>
+        </div>
       </div>
 
       {isEditing ? (
