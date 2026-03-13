@@ -19,7 +19,7 @@
 | 3 | Context Builder | 문서 체크박스 → PROMPT_*.md 파일 생성 (orphan으로 Agent가 읽기) |
 | 3 | 스킬 템플릿 | localStorage CRUD, 프롬프트 생성 시 instruction 자동 포함 |
 | 4 | 자동/수동 새로고침 | TanStack Query refetchInterval + 헤더 ↻ 버튼 |
-| 4 | 문서 편집 모드 | 편집/미리보기 토글, textarea + ⌘S 저장, 클립보드 복사 |
+| 4 | 문서 편집 모드 | 편집/미리보기 토글, textarea + ⌘S 저장, 클립보드 복사, 스크롤 위치 복원 |
 | 5 | 동적 docs_root 설정 | DirectoryPickerModal로 디렉토리 탐색/선택, config.yaml 자동 저장 |
 | 5 | 멀티/싱글 프로젝트 자동 감지 | docs_root 구조에 따라 백엔드 자동 판별 |
 | 6 | 문서 생성/삭제 | "+ 새 문서" 버튼 (.md 자동, ⌘Enter) + 삭제 확인 모달, DELETE API |

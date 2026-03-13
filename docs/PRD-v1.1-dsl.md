@@ -149,6 +149,7 @@ URL: /?project={folder_name}&doc={filename}
 │  서울형  │   ☐ 📄 PROMPT_*.md   │  - 텍스트 드래그 → 플로팅 버튼   │
 │ ⠿ 010   │   ☐ 📎 orphan2.docx  │  - 피드백 입력 → .md 자동 삽입   │
 │  소방    │                       │  - 10초 자동 새로고침            │
+│         │                       │  - 문서 전환 시 스크롤 위치 복원  │
 │         │ 0xx 프로젝트관리 (2)  │                                │
 │ @dnd-kit│   ☐ 000 index.md      │ ── 또는 ──                      │
 │ 순서변경 │ 1xx RFP분석 (3)       │                                │
@@ -249,7 +250,7 @@ agentloop/
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
 │           ├── WorkLog.tsx           # 작업 로그 표시
-│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 (자식 뷰 h-full overflow-y-auto 래퍼 필수)  # v1.6 UPD
+│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 + 스크롤 위치 복원 (자식 뷰 h-full overflow-y-auto 래퍼 필수)  # v1.6 UPD
 │           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장)      # v1.3 NEW
 │           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백
 │           │                        #   + 10초 자동 새로고침               # v1.3 UPD
@@ -450,6 +451,10 @@ v1.6 기능 추가 + 버그픽스:
 │       ViewerPanel 헤더에 "복사" 버튼 (뷰어 모드에서만 표시)
 │       TanStack Query 캐시에서 raw markdown 읽어서 navigator.clipboard.writeText()
 │       클릭 시 "복사됨!" 2초 피드백 (bg-green-100 text-green-700)
+├── 문서 전환 시 스크롤 위치 복원
+│       ViewerPanel 스크롤 컨테이너에 ref + onScroll로 Map에 위치 저장
+│       문서 전환 또는 편집→미리보기 전환 시 requestAnimationFrame으로 복원
+│       TanStack Query 캐시 히트 시 즉시 렌더 → 복원 타이밍 자연스러움
 ├── DiffViewer 스크롤 불가 수정
 │       ViewerPanel에서 DiffViewer 반환 시 h-full overflow-y-auto 래퍼 누락
 │       부모 <main>이 overflow-hidden이라 확장된 diff 콘텐츠 스크롤 불가
