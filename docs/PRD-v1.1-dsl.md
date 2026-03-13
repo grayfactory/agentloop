@@ -141,7 +141,7 @@ URL: /?project={folder_name}&doc={filename}
 │ LEFT    │ CENTER                │ RIGHT                          │
 │ w-56    │ w-80                  │ flex-1                         │
 │ 접기가능  │                       │                                │
-│         │ 프로젝트명 + 번호      │ [파일명]         [편집/미리보기] │
+│         │ 프로젝트명 + 번호      │ [파일명]    [복사][편집/미리보기] │
 │         │           [+ 새 문서]  │                                │
 │ ⠿ 008   │                       │                                │
 │   BIM   │ ▼ 미분류 문서 (N)      │ MarkdownViewer (미리보기 모드)  │
@@ -249,7 +249,7 @@ agentloop/
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
 │           ├── WorkLog.tsx           # 작업 로그 표시
-│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 (자식 뷰 h-full overflow-y-auto 래퍼 필수)  # v1.6 FIX
+│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 (자식 뷰 h-full overflow-y-auto 래퍼 필수)  # v1.6 UPD
 │           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장)      # v1.3 NEW
 │           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백
 │           │                        #   + 10초 자동 새로고침               # v1.3 UPD
@@ -445,7 +445,11 @@ v1.5 → v1.6 주요 변경:
 │       삭제된 프로젝트가 현재 선택 중이면 searchParams 초기화
 └── 컴포넌트 수: 19 → 20 (DeleteProjectModal 추가)
 
-v1.6 버그픽스:
+v1.6 기능 추가 + 버그픽스:
+├── 뷰어 모드 클립보드 복사 버튼 추가
+│       ViewerPanel 헤더에 "복사" 버튼 (뷰어 모드에서만 표시)
+│       TanStack Query 캐시에서 raw markdown 읽어서 navigator.clipboard.writeText()
+│       클릭 시 "복사됨!" 2초 피드백 (bg-green-100 text-green-700)
 ├── DiffViewer 스크롤 불가 수정
 │       ViewerPanel에서 DiffViewer 반환 시 h-full overflow-y-auto 래퍼 누락
 │       부모 <main>이 overflow-hidden이라 확장된 diff 콘텐츠 스크롤 불가

@@ -30,7 +30,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 │   ├── ContextBuilder     # Checkbox → PROMPT_*.md generation
 │   ├── SkillTemplateSelector
 │   └── WorkLog            # Work log entries
-├── ViewerPanel            # Right column (flex-1)
+├── ViewerPanel            # Right column (flex-1) + clipboard copy button
 │   ├── MarkdownViewer     # Markdown render + source line annotations
 │   ├── DocumentEditor     # Textarea + Cmd+S save
 │   ├── FeedbackPopover    # Text select → floating feedback UI
