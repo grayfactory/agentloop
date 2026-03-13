@@ -83,6 +83,7 @@ cd frontend && npm run lint    # ESLint
 
 ## NOTES
 
+- **ViewerPanel 스크롤 패턴**: 자식 뷰(MarkdownViewer, DiffViewer 등)는 `h-full overflow-y-auto` 래퍼 필수. 부모 `<main>`이 `overflow-hidden`이라 래퍼 없으면 콘텐츠 확장 시 스크롤 불가.
 - **테스트 없음**: 자동 테스트 프레임워크 미설정. 수동 테스트 의존.
 - **CI/CD 없음**: `.github/workflows/` 없음.
 - **Vite 프록시**: 개발 시 `/api` → `localhost:8066` 자동 프록시.

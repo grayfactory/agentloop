@@ -249,7 +249,7 @@ agentloop/
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
 │           ├── WorkLog.tsx           # 작업 로그 표시
-│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환     # v1.3 UPD
+│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 (자식 뷰 h-full overflow-y-auto 래퍼 필수)  # v1.6 FIX
 │           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장)      # v1.3 NEW
 │           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백
 │           │                        #   + 10초 자동 새로고침               # v1.3 UPD
@@ -444,4 +444,11 @@ v1.5 → v1.6 주요 변경:
 │       PROJECT_PATTERN 미매칭 거부, 존재하지 않는 프로젝트 404
 │       삭제된 프로젝트가 현재 선택 중이면 searchParams 초기화
 └── 컴포넌트 수: 19 → 20 (DeleteProjectModal 추가)
+
+v1.6 버그픽스:
+├── DiffViewer 스크롤 불가 수정
+│       ViewerPanel에서 DiffViewer 반환 시 h-full overflow-y-auto 래퍼 누락
+│       부모 <main>이 overflow-hidden이라 확장된 diff 콘텐츠 스크롤 불가
+│       MarkdownViewer와 동일한 스크롤 컨테이너 패턴 적용
+└── AGENTS.md 문서에 ViewerPanel 스크롤 패턴 규칙 추가
 ```
