@@ -21,14 +21,14 @@ Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 | 새 API 추가 | `routers/` 새 파일 → `main.py`에 등록 | `APIRouter(prefix="/api/...")` |
 | 비즈니스 로직 추가 | `services/` 새 파일 | 함수 기반 (클래스 없음) |
 | 스키마 추가 | `models/schemas.py` | `class X(BaseModel):` |
-| 프로젝트 목록/생성 | `services/project_service.py` | 가장 큰 파일 (226줄) |
+| 프로젝트 목록/생성/삭제 | `services/project_service.py` | list/get/init/delete_project |
 | 문서 CRUD + 삭제 | `services/document_service.py` | create/delete/update + orphan 감지 |
 | index.md 파싱 | `services/index_service.py` | 정규식 3개: CATEGORY_HEADER, TABLE_ROW, WORKLOG_ROW |
 | 설정 변경 | `config.py` → `set_docs_root()` | `config.yaml` 자동 저장 |
 
 ## CONVENTIONS
 
-- **서비스 레이어**: 함수 기반 (클래스 X). `list_projects()`, `get_project()` 등 순수 함수.
+- **서비스 레이어**: 함수 기반 (클래스 X). `list_projects()`, `get_project()`, `delete_project()` 등 순수 함수.
 - **Config 패턴**: `_runtime_docs_root` (메모리) > `config.yaml` (파일) 우선순위. `set_docs_root()`가 양쪽 갱신.
 - **프로젝트 감지**: 폴더명 `^\d{3}_.+$` 패턴 매칭 (`_PROJECT_PATTERN`). 매칭 폴더 없으면 single-project 모드.
 - **에러 처리**: 서비스에서 `FileNotFoundError`/`ValueError`/`FileExistsError` raise → 라우터에서 `HTTPException` 변환.

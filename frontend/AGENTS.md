@@ -38,6 +38,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 ├── InitProjectModal       # Create project dialog
 ├── CreateDocumentModal    # Create new markdown document
 ├── DeleteConfirmModal     # Confirm document deletion
+├── DeleteProjectModal     # Confirm project deletion (sidebar hover trigger)
 ├── DirectoryPickerModal   # Select docs_root path
 └── SkillTemplateModal     # Skill template CRUD
 ```
@@ -51,7 +52,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **Tailwind v4** — Uses `@tailwindcss/vite` plugin (not PostCSS). Import `@tailwindcss/typography` for prose.
 - **No global state** — Server state in TanStack Query; UI state in component state + localStorage
 - **localStorage keys** — `'sidebar-collapsed'`, `'project-order'`, `'skill-templates'`
-- **Flat components dir** — No feature folders. 19 components in single `components/` directory.
+- **Flat components dir** — No feature folders. 20 components in single `components/` directory.
 - **API client pattern** — `const res = await fetch(...)` → check `res.ok` → throw Korean error messages
 - **Props pattern** — Inline type annotations in function params, no separate Props interfaces
 

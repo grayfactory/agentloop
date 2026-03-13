@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from models.schemas import Project, ProjectDetail, InitProjectRequest
-from services.project_service import list_projects, get_project, init_project
+from services.project_service import list_projects, get_project, init_project, delete_project
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -27,3 +27,14 @@ def create_project(req: InitProjectRequest):
         return {"folder_name": folder, "message": "프로젝트가 생성되었습니다."}
     except FileExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+
+@router.delete("/{name}", response_model=dict)
+def remove_project(name: str):
+    try:
+        delete_project(name)
+        return {"message": "프로젝트가 삭제되었습니다."}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

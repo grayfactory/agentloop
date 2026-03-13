@@ -21,10 +21,11 @@ interface Props {
   projects: Project[];
   selectedProject: string | null;
   onSelectProject: (folderName: string) => void;
+  onDeleteProject?: (folderName: string) => void;
   collapsed: boolean;
 }
 
-export default function ProjectSidebar({ projects, selectedProject, onSelectProject, collapsed }: Props) {
+export default function ProjectSidebar({ projects, selectedProject, onSelectProject, onDeleteProject, collapsed }: Props) {
   const { orderedProjects, reorder } = useProjectOrder(projects);
 
   const sensors = useSensors(
@@ -60,6 +61,7 @@ export default function ProjectSidebar({ projects, selectedProject, onSelectProj
               project={project}
               isSelected={selectedProject === project.folder_name}
               onSelect={onSelectProject}
+              onDelete={onDeleteProject}
               collapsed={collapsed}
             />
           ))}

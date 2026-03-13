@@ -1,7 +1,7 @@
-# AgentLoop — PRD v1.5 (DSL Summary)
+# AgentLoop — PRD v1.6 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-03-12
+> 최종 갱신: 2026-03-13
 
 ---
 
@@ -15,7 +15,8 @@
 ├── v1.1: 1-Step Master-Detail UI + AI 협업 피드백 루프 + Context Builder
 ├── v1.3: 자동 새로고침 + 문서 편집 모드 + 프롬프트 파일 생성
 ├── v1.4: 동적 docs_root 설정 + 멀티/싱글 프로젝트 자동 감지
-└── v1.5: 문서 생성/삭제 UI + DELETE API
+├── v1.5: 문서 생성/삭제 UI + DELETE API
+└── v1.6: 프로젝트 삭제 기능 (DELETE API + 확인 모달)
 ```
 
 ---
@@ -98,6 +99,8 @@ GET    /api/browse?path=                         → BrowseResponse             
        # 디렉토리 탐색 (path 미지정 시 홈 디렉토리, 숨김 폴더 제외)
 GET    /api/projects                              → Project[]
 POST   /api/projects        ← { num, title }     → { folder_name, message }
+DELETE /api/projects/{name}                       → { message }                 # v1.6 NEW
+       # 프로젝트 디렉토리 전체 삭제 (싱글 모드 차단, 이름 패턴 검증)
 GET    /api/projects/{name}                       → ProjectDetail (orphan_files, has_index 포함)
 GET    /api/projects/{name}/documents             → Document[]
 POST   /api/projects/{name}/documents             → { filename, status }       # v1.3 NEW
@@ -164,6 +167,8 @@ URL: /?project={folder_name}&doc={filename}
 │ [CreateDocumentModal] — 파일명(.md 자동) + 내용 → POST /documents │  # v1.5 NEW
 │   ⌘Enter 단축키 생성, .md 확장자 자동 추가, autoFocus            │
 │ [DeleteConfirmModal] — 확인 → DELETE /documents/{filename}       │  # v1.5 NEW
+│ [DeleteProjectModal] — 확인 → DELETE /projects/{name}           │  # v1.6 NEW
+│   프로젝트명 표시, "모든 문서 함께 삭제" 경고                      │
 │ [SkillTemplateModal] — 스킬 템플릿 CRUD (localStorage)           │
 │ [DirectoryPickerModal] — docs_root 디렉토리 탐색/선택            │  # v1.4 NEW
 │   is_valid=false 시 자동 표시, ⚙ 버튼으로 수동 열기              │
@@ -176,8 +181,9 @@ URL searchParams       → selectedProject, selectedDoc
 localStorage           → sidebar-collapsed, project-order (DnD), skill-templates (F7)
 React state            → compareDoc (Diff 모드), showInitModal, checkedDocs (F6),
                           isEditing (편집 모드 토글),                    # v1.3 NEW
-                          showDirectoryPicker (설정 모달),               # v1.4 NEW
-                          showCreateModal, deleteTarget (문서 생성/삭제)  # v1.5 NEW
+                           showDirectoryPicker (설정 모달),               # v1.4 NEW
+                           showCreateModal, deleteTarget (문서 생성/삭제), # v1.5 NEW
+                           deleteProjectTarget (프로젝트 삭제)            # v1.6 NEW
 TanStack Query         → projects (30s), projectDetail (10s), documentContent (10s), config
                           refetchInterval 기반 자동 새로고침            # v1.3 NEW
 ```
@@ -200,13 +206,13 @@ agentloop/
 │   │                            #   CreateDocumentRequest, UpdateDocumentRequest  # v1.3 NEW
 │   ├── services/
 │   │   ├── index_service.py     # parse_index() — 정규식 md 테이블 파싱
-│   │   ├── project_service.py   # list/get/init project + orphan 통합
+│   │   ├── project_service.py   # list/get/init/delete project + orphan 통합  # v1.6 UPD
 │   │   └── document_service.py  # list docs, get content, get worklogs,
 │   │                            #   detect_orphans(), insert_feedback(),
 │   │                            #   create_document(), update_document_content(),  # v1.3 NEW
 │   │                            #   delete_document()                              # v1.5 NEW
 │   └── routers/
-│       ├── projects.py          # /api/projects CRUD
+│       ├── projects.py          # /api/projects CRUD + DELETE              # v1.6 UPD
 │       ├── documents.py         # /api/projects/{name}/documents + feedback
 │       │                        #   + POST create + PUT update + DELETE     # v1.3/v1.5
 │       └── config.py            # PUT /api/config + GET /api/browse         # v1.4 NEW
@@ -218,6 +224,7 @@ agentloop/
 │       ├── api/client.ts        # fetch 래퍼 + TS 인터페이스 + fetchConfig()
 │       │                        #   + createDocument(), updateDocumentContent()  # v1.3 NEW
 │       │                        #   + deleteDocument()                          # v1.5 NEW
+│       │                        #   + deleteProject()                           # v1.6 NEW
 │       │                        #   + updateConfig(), browsePath()               # v1.4 NEW
 │       ├── App.tsx              # → WorkspacePage (단일 렌더)
 │       ├── plugins/
@@ -229,10 +236,11 @@ agentloop/
 │       │   └── WorkspacePage.tsx     # 3컬럼 Master-Detail 메인 페이지
 │       │                            #   + refetchInterval, 새로고침 핸들러  # v1.3 NEW
 │       │                            #   + config 쿼리, DirectoryPickerModal 연동  # v1.4 NEW
+│       │                            #   + deleteProjectTarget 상태, DeleteProjectModal 연동  # v1.6 NEW
 │       └── components/
 │           ├── AppHeader.tsx         # 상단 바 (≡ 토글 + ↻ 새로고침 + ⚙설정 + 새 프로젝트) # v1.4 UPD
-│           ├── ProjectListItem.tsx   # 사이드바 프로젝트 항목 + useSortable 드래그 핸들
-│           ├── ProjectSidebar.tsx    # LEFT: @dnd-kit 프로젝트 목록 + 접기
+│           ├── ProjectListItem.tsx   # 사이드바 프로젝트 항목 + 드래그 핸들 + 삭제 버튼  # v1.6 UPD
+│           ├── ProjectSidebar.tsx    # LEFT: @dnd-kit 프로젝트 목록 + 접기 + 삭제 콜백  # v1.6 UPD
 │           ├── DocumentPanel.tsx     # CENTER: Orphan + DocList + ContextBuilder + WorkLog
 │           │                        #   + 새 문서 버튼, 생성/삭제 모달 연동    # v1.5 UPD
 │           ├── OrphanSection.tsx     # 미분류 문서 섹션 (F3) + 체크박스 + 삭제 버튼  # v1.5 UPD
@@ -250,6 +258,7 @@ agentloop/
 │           ├── InitProjectModal.tsx  # 프로젝트 생성 모달
 │           ├── CreateDocumentModal.tsx  # 문서 생성 모달 (파일명+내용)       # v1.5 NEW
 │           ├── DeleteConfirmModal.tsx   # 문서 삭제 확인 다이얼로그          # v1.5 NEW
+│           ├── DeleteProjectModal.tsx  # 프로젝트 삭제 확인 다이얼로그      # v1.6 NEW
 │           └── DirectoryPickerModal.tsx # docs_root 디렉토리 탐색/선택 모달  # v1.4 NEW
 │
 └── docs/                        # 기획/설계 문서 (이 파일 포함)
@@ -303,6 +312,12 @@ agentloop/
 |------|------|------|
 | F14. 문서 생성 UI | ✅ | DocumentPanel "+ 새 문서" 버튼 → CreateDocumentModal (파일명+내용, .md 자동, ⌘Enter) |
 | F15. 문서 삭제 | ✅ | DELETE API + 문서/orphan 항목 hover 시 삭제 버튼 → DeleteConfirmModal 확인 |
+
+### Phase 7 (프로젝트 관리 확장) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F16. 프로젝트 삭제 | ✅ | DELETE /api/projects/{name} + 사이드바 hover 삭제 버튼 → DeleteProjectModal 확인, 싱글 모드 차단, shutil.rmtree |
 
 ---
 
@@ -415,4 +430,18 @@ v1.4 → v1.5 주요 변경:
 ├── DocumentPanel에 showCreateModal, deleteTarget 상태 추가
 │       queryClient.invalidateQueries() 연동으로 삭제/생성 후 즉시 반영
 └── 컴포넌트 수: 17 → 19 (CreateDocumentModal, DeleteConfirmModal 추가)
+
+v1.5 → v1.6 주요 변경:
+├── F16: 프로젝트 삭제
+│       Backend: delete_project() 서비스 (싱글 모드 차단, PROJECT_PATTERN 검증, shutil.rmtree)
+│       Backend: DELETE /api/projects/{name} 엔드포인트
+│       신규 DeleteProjectModal: 프로젝트 삭제 확인 다이얼로그 ("모든 문서 함께 삭제" 경고)
+│       ProjectListItem에 hover 시 삭제 버튼 추가 (group-hover, 휴지통 아이콘)
+│       ProjectSidebar에 onDeleteProject 콜백 전달
+│       WorkspacePage에 deleteProjectTarget 상태 + 삭제 시 선택 해제 처리
+│       Frontend API: deleteProject()
+├── 안전장치: 싱글 프로젝트 모드 삭제 차단 (ValueError 400)
+│       PROJECT_PATTERN 미매칭 거부, 존재하지 않는 프로젝트 404
+│       삭제된 프로젝트가 현재 선택 중이면 searchParams 초기화
+└── 컴포넌트 수: 19 → 20 (DeleteProjectModal 추가)
 ```

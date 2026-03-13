@@ -21,7 +21,7 @@ agentloop/
 │   └── src/
 │       ├── api/client.ts # fetch 래퍼 + TS 인터페이스 (backend 스키마 수동 미러)
 │       ├── pages/        # WorkspacePage (3컬럼 Master-Detail, 유일한 페이지)
-│       ├── components/   # 19개 React 컴포넌트 (flat 구조)
+│       ├── components/   # 20개 React 컴포넌트 (flat 구조)
 │       ├── hooks/        # localStorage 기반 커스텀 훅 2개
 │       └── plugins/      # rehype 커스텀 플러그인
 ├── docs/                 # 기획/설계 문서 (PRD, 기술설계서, 구현가이드)
@@ -42,6 +42,7 @@ agentloop/
 | index.md 파싱 로직 | `backend/services/index_service.py` | 정규식 기반, 포맷 변경 시 주의 |
 | 프로젝트 모드 판별 | `backend/config.py` → `is_single_project_mode()` | 폴더명 패턴 `\d{3}_.+` 기준 |
 | 문서 생성/삭제 | `backend/services/document_service.py` + `frontend/src/components/CreateDocumentModal.tsx`, `DeleteConfirmModal.tsx` | BE: create_document/delete_document, FE: 모달 UI |
+| 프로젝트 삭제 | `backend/services/project_service.py` + `frontend/src/components/DeleteProjectModal.tsx` | BE: delete_project (shutil.rmtree), FE: 확인 모달 + 사이드바 버튼 |
 
 ## CONVENTIONS
 

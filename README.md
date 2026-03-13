@@ -23,6 +23,7 @@
 | 5 | 동적 docs_root 설정 | DirectoryPickerModal로 디렉토리 탐색/선택, config.yaml 자동 저장 |
 | 5 | 멀티/싱글 프로젝트 자동 감지 | docs_root 구조에 따라 백엔드 자동 판별 |
 | 6 | 문서 생성/삭제 | "+ 새 문서" 버튼 (.md 자동, ⌘Enter) + 삭제 확인 모달, DELETE API |
+| 7 | 프로젝트 삭제 | 사이드바 hover 삭제 버튼 → 확인 모달, 싱글 모드 차단, 선택 해제 |
 
 ## 기술 스택
 
@@ -50,7 +51,7 @@ agentloop/
 │   ├── models/schemas.py        # Pydantic 모델
 │   ├── services/
 │   │   ├── index_service.py     # index.md 정규식 파싱
-│   │   ├── project_service.py   # 프로젝트 목록/초기화 + orphan 통합
+│   │   ├── project_service.py   # 프로젝트 목록/초기화/삭제 + orphan 통합
 │   │   └── document_service.py  # 문서 CRUD, orphan 감지, 피드백 삽입
 │   └── routers/
 │       ├── projects.py          # /api/projects
@@ -85,6 +86,7 @@ agentloop/
 │           ├── InitProjectModal.tsx
 │           ├── CreateDocumentModal.tsx
 │           ├── DeleteConfirmModal.tsx
+│           ├── DeleteProjectModal.tsx
 │           └── DirectoryPickerModal.tsx
 │
 └── docs/                        # 기획/설계 문서
@@ -134,6 +136,7 @@ docs_root: "/path/to/docs"
 | GET | `/api/browse?path=` | 디렉토리 탐색 |
 | GET | `/api/projects` | 프로젝트 목록 |
 | POST | `/api/projects` | 프로젝트 초기화 |
+| DELETE | `/api/projects/{name}` | 프로젝트 삭제 |
 | GET | `/api/projects/{name}` | 프로젝트 상세 (orphan, has_index 포함) |
 | GET | `/api/projects/{name}/documents` | 문서 목록 |
 | POST | `/api/projects/{name}/documents` | 문서 생성 |

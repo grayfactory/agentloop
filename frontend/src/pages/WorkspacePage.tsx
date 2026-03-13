@@ -7,6 +7,7 @@ import ProjectSidebar from '../components/ProjectSidebar';
 import DocumentPanel from '../components/DocumentPanel';
 import ViewerPanel from '../components/ViewerPanel';
 import InitProjectModal from '../components/InitProjectModal';
+import DeleteProjectModal from '../components/DeleteProjectModal';
 import DirectoryPickerModal from '../components/DirectoryPickerModal';
 
 export default function WorkspacePage() {
@@ -21,6 +22,7 @@ export default function WorkspacePage() {
   );
   const [showInitModal, setShowInitModal] = useState(false);
   const [showDirectoryPicker, setShowDirectoryPicker] = useState(false);
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<string | null>(null);
   const [compareDoc, setCompareDoc] = useState<string | null>(null);
 
   const isFetching = useIsFetching();
@@ -87,6 +89,7 @@ export default function WorkspacePage() {
             projects={projects}
             selectedProject={selectedProject}
             onSelectProject={selectProject}
+            onDeleteProject={(folderName) => setDeleteProjectTarget(folderName)}
             collapsed={sidebarCollapsed}
           />
         </aside>
@@ -116,6 +119,21 @@ export default function WorkspacePage() {
         <InitProjectModal
           onClose={() => setShowInitModal(false)}
           onCreated={() => queryClient.invalidateQueries({ queryKey: ['projects'] })}
+        />
+      )}
+
+      {deleteProjectTarget && (
+        <DeleteProjectModal
+          folderName={deleteProjectTarget}
+          projectTitle={projects.find((p) => p.folder_name === deleteProjectTarget)?.project_title ?? deleteProjectTarget}
+          onClose={() => setDeleteProjectTarget(null)}
+          onDeleted={() => {
+            if (selectedProject === deleteProjectTarget) {
+              setSearchParams({});
+              setCompareDoc(null);
+            }
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+          }}
         />
       )}
 

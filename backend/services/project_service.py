@@ -1,4 +1,5 @@
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -71,6 +72,21 @@ def get_project(name: str) -> ProjectDetail:
         orphan_files=orphan_files,
         has_index=has_index,
     )
+
+
+def delete_project(name: str) -> None:
+    if is_single_project_mode():
+        raise ValueError("싱글 프로젝트 모드에서는 프로젝트를 삭제할 수 없습니다.")
+
+    m = PROJECT_PATTERN.match(name)
+    if not m:
+        raise ValueError(f"잘못된 프로젝트 이름입니다: {name}")
+
+    project_dir = resolve_project_dir(name)
+    if not project_dir.exists():
+        raise FileNotFoundError(f"프로젝트를 찾을 수 없습니다: {name}")
+
+    shutil.rmtree(project_dir)
 
 
 def init_project(num: str, title: str) -> str:

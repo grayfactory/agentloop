@@ -6,10 +6,11 @@ interface Props {
   project: Project;
   isSelected: boolean;
   onSelect: (folderName: string) => void;
+  onDelete?: (folderName: string) => void;
   collapsed: boolean;
 }
 
-export default function ProjectListItem({ project, isSelected, onSelect, collapsed }: Props) {
+export default function ProjectListItem({ project, isSelected, onSelect, onDelete, collapsed }: Props) {
   const {
     attributes,
     listeners,
@@ -26,7 +27,7 @@ export default function ProjectListItem({ project, isSelected, onSelect, collaps
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-1">
+    <div ref={setNodeRef} style={style} className="group/project flex items-center gap-1">
       <button
         {...attributes}
         {...listeners}
@@ -66,6 +67,17 @@ export default function ProjectListItem({ project, isSelected, onSelect, collaps
           </div>
         )}
       </button>
+      {onDelete && !collapsed && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(project.folder_name); }}
+          className="shrink-0 p-1 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover/project:opacity-100"
+          title="프로젝트 삭제"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

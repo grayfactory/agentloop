@@ -166,6 +166,16 @@ export async function createProject(num: string, title: string): Promise<{ folde
   return res.json();
 }
 
+export async function deleteProject(folderName: string): Promise<void> {
+  const res = await fetch(`${BASE}/projects/${encodeURIComponent(folderName)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '프로젝트 삭제 실패');
+  }
+}
+
 export async function updateConfig(docsRoot: string): Promise<AppConfig> {
   const res = await fetch(`${BASE}/config`, {
     method: 'PUT',
