@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import MarkdownViewer from './MarkdownViewer';
 import DiffViewer from './DiffViewer';
@@ -14,6 +14,8 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionsRef = useRef(new Map<string, number>());
 
   useEffect(() => {
     setIsEditing(false);
@@ -27,6 +29,24 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [queryClient, projectName, filename]);
+
+  const handleScroll = useCallback(() => {
+    if (!projectName || !filename || !scrollContainerRef.current) return;
+    scrollPositionsRef.current.set(
+      `${projectName}/${filename}`,
+      scrollContainerRef.current.scrollTop,
+    );
+  }, [projectName, filename]);
+
+  useEffect(() => {
+    if (!projectName || !filename || isEditing) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const saved = scrollPositionsRef.current.get(`${projectName}/${filename}`);
+    requestAnimationFrame(() => {
+      el.scrollTop = saved ?? 0;
+    });
+  }, [projectName, filename, isEditing]);
 
   if (!projectName || !filename) {
     return (
@@ -84,7 +104,11 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
           filename={filename}
         />
       ) : (
-        <div className="flex-1 overflow-y-auto p-8 max-w-4xl bg-white">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-8 max-w-4xl bg-white"
+        >
           <MarkdownViewer projectName={projectName} filename={filename} />
         </div>
       )}
