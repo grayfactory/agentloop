@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 from models.schemas import (
     CreateDocumentRequest,
     Document,
     FeedbackRequest,
     UpdateDocumentRequest,
+    UploadError,
+    UploadResult,
     WorkLog,
 )
 from services.document_service import (
@@ -15,6 +17,7 @@ from services.document_service import (
     insert_feedback,
     list_documents,
     update_document_content,
+    upload_file,
 )
 
 router = APIRouter(prefix="/api/projects/{name}", tags=["documents"])
@@ -53,6 +56,25 @@ def create_document_endpoint(name: str, req: CreateDocumentRequest):
         raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/upload", response_model=UploadResult)
+async def upload_files_endpoint(name: str, files: list[UploadFile]):
+    uploaded: list[str] = []
+    errors: list[UploadError] = []
+
+    for file in files:
+        filename = file.filename or "unnamed"
+        try:
+            content = await file.read()
+            upload_file(name, filename, content)
+            uploaded.append(filename)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except (FileExistsError, ValueError) as e:
+            errors.append(UploadError(filename=filename, detail=str(e)))
+
+    return UploadResult(uploaded=uploaded, errors=errors)
 
 
 @router.delete("/documents/{filename}")

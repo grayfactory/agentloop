@@ -74,3 +74,13 @@ class BrowseResponse(BaseModel):
     current_path: str
     parent_path: str | None
     directories: list[DirectoryEntry]
+
+
+class UploadError(BaseModel):
+    filename: str
+    detail: str
+
+
+class UploadResult(BaseModel):
+    uploaded: list[str]
+    errors: list[UploadError]

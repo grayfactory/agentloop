@@ -1,7 +1,7 @@
-# AgentLoop — PRD v1.6 (DSL Summary)
+# AgentLoop — PRD v1.7 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-03-13
+> 최종 갱신: 2026-03-18
 
 ---
 
@@ -16,7 +16,8 @@
 ├── v1.3: 자동 새로고침 + 문서 편집 모드 + 프롬프트 파일 생성
 ├── v1.4: 동적 docs_root 설정 + 멀티/싱글 프로젝트 자동 감지
 ├── v1.5: 문서 생성/삭제 UI + DELETE API
-└── v1.6: 프로젝트 삭제 기능 (DELETE API + 확인 모달)
+├── v1.6: 프로젝트 삭제 기능 (DELETE API + 확인 모달)
+└── v1.7: 드래그앤드롭 파일 업로드 + ⌘E 편집/미리보기 토글 단축키
 ```
 
 ---
@@ -63,6 +64,8 @@ UpdateDocumentRequest { content }                                       # v1.3 N
 UpdateConfigRequest { docs_root }                                       # v1.4 NEW
 DirectoryEntry { name, path }                                           # v1.4 NEW
 BrowseResponse { current_path, parent_path, directories[] }             # v1.4 NEW
+UploadError    { filename, detail }                                      # v1.7 NEW
+UploadResult   { uploaded[], errors[] }                                  # v1.7 NEW
 ```
 
 **문서 코드 체계:**
@@ -112,6 +115,9 @@ PUT    /api/projects/{name}/documents/{filename}  → { status }                
        # 기존 문서 내용 덮어쓰기 (브라우저 편집 모드)
 DELETE /api/projects/{name}/documents/{filename}  → { status }                 # v1.5 NEW
        # 문서 파일 삭제 (시스템 파일 보호, 경로 조작 방지)
+POST   /api/projects/{name}/upload                → UploadResult               # v1.7 NEW
+       ← multipart/form-data (files[])
+       # 드래그앤드롭 파일 업로드. 바이너리 지원. 부분 성공 (uploaded[] + errors[])
 POST   /api/projects/{name}/documents/{filename}/feedback          # v1.1 NEW
        ← { line_number, target_text, instruction }
        → { status: "ok" }
@@ -141,7 +147,7 @@ URL: /?project={folder_name}&doc={filename}
 │ LEFT    │ CENTER                │ RIGHT                          │
 │ w-56    │ w-80                  │ flex-1                         │
 │ 접기가능  │                       │                                │
-│         │ 프로젝트명 + 번호      │ [파일명]    [복사][편집/미리보기] │
+│         │ 프로젝트명 + 번호      │ [파일명]  [복사][편집/미리보기 ⌘E]│
 │         │           [+ 새 문서]  │                                │
 │ ⠿ 008   │                       │                                │
 │   BIM   │ ▼ 미분류 문서 (N)      │ MarkdownViewer (미리보기 모드)  │
@@ -150,6 +156,10 @@ URL: /?project={folder_name}&doc={filename}
 │ ⠿ 010   │   ☐ 📎 orphan2.docx  │  - 피드백 입력 → .md 자동 삽입   │
 │  소방    │                       │  - 10초 자동 새로고침            │
 │         │                       │  - 문서 전환 시 스크롤 위치 복원  │
+│         │                       │  - ⌘E 편집/미리보기 토글 단축키  │
+│         │ [드래그앤드롭 업로드]  │                                │
+│         │  OS파일→패널 드롭     │                                │
+│         │  오버레이 피드백      │                                │
 │         │ 0xx 프로젝트관리 (2)  │                                │
 │ @dnd-kit│   ☐ 000 index.md      │ ── 또는 ──                      │
 │ 순서변경 │ 1xx RFP분석 (3)       │                                │
@@ -181,7 +191,8 @@ URL: /?project={folder_name}&doc={filename}
 URL searchParams       → selectedProject, selectedDoc
 localStorage           → sidebar-collapsed, project-order (DnD), skill-templates (F7)
 React state            → compareDoc (Diff 모드), showInitModal, checkedDocs (F6),
-                          isEditing (편집 모드 토글),                    # v1.3 NEW
+                          isEditing (편집 모드 토글, ⌘E 단축키),         # v1.3 NEW / v1.7 UPD
+                          isDragOver, uploadError (드래그앤드롭 상태),    # v1.7 NEW
                            showDirectoryPicker (설정 모달),               # v1.4 NEW
                            showCreateModal, deleteTarget (문서 생성/삭제), # v1.5 NEW
                            deleteProjectTarget (프로젝트 삭제)            # v1.6 NEW
@@ -211,11 +222,13 @@ agentloop/
 │   │   └── document_service.py  # list docs, get content, get worklogs,
 │   │                            #   detect_orphans(), insert_feedback(),
 │   │                            #   create_document(), update_document_content(),  # v1.3 NEW
-│   │                            #   delete_document()                              # v1.5 NEW
+│   │                            #   delete_document(),                             # v1.5 NEW
+│   │                            #   upload_file() (바이너리 파일 업로드)            # v1.7 NEW
 │   └── routers/
 │       ├── projects.py          # /api/projects CRUD + DELETE              # v1.6 UPD
 │       ├── documents.py         # /api/projects/{name}/documents + feedback
 │       │                        #   + POST create + PUT update + DELETE     # v1.3/v1.5
+│       │                        #   + POST /upload (multipart)              # v1.7 NEW
 │       └── config.py            # PUT /api/config + GET /api/browse         # v1.4 NEW
 │
 ├── frontend/
@@ -226,6 +239,7 @@ agentloop/
 │       │                        #   + createDocument(), updateDocumentContent()  # v1.3 NEW
 │       │                        #   + deleteDocument()                          # v1.5 NEW
 │       │                        #   + deleteProject()                           # v1.6 NEW
+│       │                        #   + uploadFiles() (FormData multipart)        # v1.7 NEW
 │       │                        #   + updateConfig(), browsePath()               # v1.4 NEW
 │       ├── App.tsx              # → WorkspacePage (단일 렌더)
 │       ├── plugins/
@@ -244,13 +258,14 @@ agentloop/
 │           ├── ProjectSidebar.tsx    # LEFT: @dnd-kit 프로젝트 목록 + 접기 + 삭제 콜백  # v1.6 UPD
 │           ├── DocumentPanel.tsx     # CENTER: Orphan + DocList + ContextBuilder + WorkLog
 │           │                        #   + 새 문서 버튼, 생성/삭제 모달 연동    # v1.5 UPD
+│           │                        #   + 드래그앤드롭 파일 업로드 (dragCounter 패턴)  # v1.7 NEW
 │           ├── OrphanSection.tsx     # 미분류 문서 섹션 (F3) + 체크박스 + 삭제 버튼  # v1.5 UPD
 │           ├── DocumentList.tsx      # 대분류(0~9)별 그룹핑 + hideEmpty + 체크박스 + 삭제 버튼  # v1.5 UPD
 │           ├── ContextBuilder.tsx    # 문서 장바구니: 프롬프트 파일 생성 + 비교 버튼  # v1.3 UPD
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
 │           ├── WorkLog.tsx           # 작업 로그 표시
-│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 + 스크롤 위치 복원 (자식 뷰 h-full overflow-y-auto 래퍼 필수)  # v1.6 UPD
+│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 + 스크롤 위치 복원 + ⌘E 단축키  # v1.7 UPD
 │           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장)      # v1.3 NEW
 │           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백
 │           │                        #   + 10초 자동 새로고침               # v1.3 UPD
@@ -319,6 +334,13 @@ agentloop/
 | 기능 | 상태 | 비고 |
 |------|------|------|
 | F16. 프로젝트 삭제 | ✅ | DELETE /api/projects/{name} + 사이드바 hover 삭제 버튼 → DeleteProjectModal 확인, 싱글 모드 차단, shutil.rmtree |
+
+### Phase 8 (편의성 개선 II) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F17. 드래그앤드롭 파일 업로드 | ✅ | POST /upload (multipart), DocumentPanel 드롭존, dragCounter 패턴, 부분 성공, 미분류로 자동 추가 |
+| F18. ⌘E 편집/미리보기 토글 단축키 | ✅ | ViewerPanel ⌘E/Ctrl+E 키보드 단축키, 버튼에 힌트 표시, compare 모드 시 비활성화 |
 
 ---
 
@@ -460,4 +482,24 @@ v1.6 기능 추가 + 버그픽스:
 │       부모 <main>이 overflow-hidden이라 확장된 diff 콘텐츠 스크롤 불가
 │       MarkdownViewer와 동일한 스크롤 컨테이너 패턴 적용
 └── AGENTS.md 문서에 ViewerPanel 스크롤 패턴 규칙 추가
+
+v1.6 → v1.7 주요 변경:
+├── F17: 드래그앤드롭 파일 업로드
+│       Backend: upload_file() 서비스 (write_bytes, 경로 조작 방지, 중복 검증)
+│       Backend: POST /api/projects/{name}/upload (multipart/form-data)
+│       신규 Pydantic 모델: UploadError, UploadResult (부분 성공 응답)
+│       DocumentPanel에 네이티브 HTML5 드래그앤드롭 핸들러 추가
+│       dragCounter ref 패턴으로 자식 요소 경계 플리커 방지
+│       dataTransfer.types.includes('Files') 가드로 @dnd-kit 충돌 방지
+│       드래그 시 인디고 오버레이 ("파일을 여기에 놓으세요") 표시
+│       업로드 에러 인라인 표시 (닫기 버튼)
+│       업로드 후 queryClient.invalidateQueries로 OrphanSection 즉시 반영
+│       Frontend API: uploadFiles() (FormData multipart, Content-Type 헤더 미설정)
+├── F18: ⌘E 편집/미리보기 토글 단축키
+│       ViewerPanel에 useEffect + document.addEventListener('keydown') 추가
+│       ⌘E (Mac) / Ctrl+E (Windows/Linux) → setIsEditing 토글
+│       compare 모드 또는 문서 미선택 시 단축키 비활성화
+│       편집/미리보기 버튼에 "⌘E" 힌트 텍스트 + title 속성 추가
+│       DocumentEditor의 ⌘S 패턴과 동일한 구현 방식
+└── 컴포넌트 수: 20개 (변경 없음, 기존 컴포넌트 수정만)
 ```

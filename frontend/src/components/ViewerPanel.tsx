@@ -48,6 +48,18 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
     });
   }, [projectName, filename, isEditing]);
 
+  useEffect(() => {
+    if (!projectName || !filename || compareFilename) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+        e.preventDefault();
+        setIsEditing((prev) => !prev);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [projectName, filename, compareFilename]);
+
   if (!projectName || !filename) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400 text-sm">
@@ -92,8 +104,10 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
                 ? 'bg-indigo-100 text-indigo-700'
                 : 'text-gray-500 hover:bg-gray-100'
             }`}
+            title="⌘E"
           >
             {isEditing ? '미리보기' : '편집'}
+            <span className="ml-1 text-gray-400 text-[10px]">⌘E</span>
           </button>
         </div>
       </div>

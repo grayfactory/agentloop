@@ -176,6 +176,35 @@ export async function deleteProject(folderName: string): Promise<void> {
   }
 }
 
+export interface UploadError {
+  filename: string;
+  detail: string;
+}
+
+export interface UploadResult {
+  uploaded: string[];
+  errors: UploadError[];
+}
+
+export async function uploadFiles(
+  projectName: string,
+  files: File[],
+): Promise<UploadResult> {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append('files', file);
+  }
+  const res = await fetch(`${BASE}/projects/${projectName}/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '파일 업로드 실패');
+  }
+  return res.json();
+}
+
 export async function updateConfig(docsRoot: string): Promise<AppConfig> {
   const res = await fetch(`${BASE}/config`, {
     method: 'PUT',

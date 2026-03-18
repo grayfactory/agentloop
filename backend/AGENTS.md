@@ -22,7 +22,7 @@ Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 | 비즈니스 로직 추가 | `services/` 새 파일 | 함수 기반 (클래스 없음) |
 | 스키마 추가 | `models/schemas.py` | `class X(BaseModel):` |
 | 프로젝트 목록/생성/삭제 | `services/project_service.py` | list/get/init/delete_project |
-| 문서 CRUD + 삭제 | `services/document_service.py` | create/delete/update + orphan 감지 |
+| 문서 CRUD + 삭제 | `services/document_service.py` | create/delete/update/upload + orphan 감지 |
 | index.md 파싱 | `services/index_service.py` | 정규식 3개: CATEGORY_HEADER, TABLE_ROW, WORKLOG_ROW |
 | 설정 변경 | `config.py` → `set_docs_root()` | `config.yaml` 자동 저장 |
 

@@ -76,6 +76,23 @@ def create_document(project_name: str, filename: str, content: str) -> str:
     return filename
 
 
+def upload_file(project_name: str, filename: str, content: bytes) -> str:
+    """Upload a binary file to the project directory."""
+    project_dir = resolve_project_dir(project_name)
+    if not project_dir.exists():
+        raise FileNotFoundError(f"프로젝트를 찾을 수 없습니다: {project_name}")
+
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise ValueError(f"잘못된 파일명입니다: {filename}")
+
+    file_path = project_dir / filename
+    if file_path.exists():
+        raise FileExistsError(f"이미 존재하는 파일입니다: {filename}")
+
+    file_path.write_bytes(content)
+    return filename
+
+
 def delete_document(project_name: str, filename: str) -> str:
     """Delete a document file from the project directory."""
     project_dir = resolve_project_dir(project_name)
