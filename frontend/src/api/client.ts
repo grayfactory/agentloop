@@ -137,6 +137,23 @@ export async function deleteDocument(
   }
 }
 
+export async function renameDocument(
+  projectName: string,
+  oldFilename: string,
+  newFilename: string,
+): Promise<{ old_filename: string; new_filename: string; status: string }> {
+  const res = await fetch(`${BASE}/projects/${projectName}/documents/${encodeURIComponent(oldFilename)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_filename: newFilename }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '파일명 변경 실패');
+  }
+  return res.json();
+}
+
 export async function updateDocumentContent(
   projectName: string,
   filename: string,

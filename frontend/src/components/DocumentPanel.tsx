@@ -8,6 +8,7 @@ import WorkLog from './WorkLog';
 import ContextBuilder from './ContextBuilder';
 import CreateDocumentModal from './CreateDocumentModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
+import RenameModal from './RenameModal';
 
 interface Props {
   projectDetail: ProjectDetail | null;
@@ -15,6 +16,7 @@ interface Props {
   onSelectDoc: (filename: string) => void;
   compareDoc: string | null;
   onSelectCompare: (filename: string | null) => void;
+  onRenameDoc?: (newFilename: string) => void;
 }
 
 export default function DocumentPanel({
@@ -23,12 +25,14 @@ export default function DocumentPanel({
   onSelectDoc,
   compareDoc,
   onSelectCompare,
+  onRenameDoc,
 }: Props) {
   const queryClient = useQueryClient();
   const [showWorklog, setShowWorklog] = useState(true);
   const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const dragCounter = useRef(0);
@@ -170,6 +174,7 @@ export default function DocumentPanel({
           checkedDocs={checkedDocs}
           onToggleCheck={handleToggleCheck}
           onDelete={(f) => setDeleteTarget(f)}
+          onRename={(f) => setRenameTarget(f)}
         />
         <DocumentList
           documents={projectDetail.documents}
@@ -179,6 +184,7 @@ export default function DocumentPanel({
           checkedDocs={checkedDocs}
           onToggleCheck={handleToggleCheck}
           onDelete={(f) => setDeleteTarget(f)}
+          onRename={(f) => setRenameTarget(f)}
         />
       </div>
 
@@ -222,6 +228,18 @@ export default function DocumentPanel({
           filename={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onDeleted={() => queryClient.invalidateQueries({ queryKey: ['project', projectDetail.folder_name] })}
+        />
+      )}
+
+      {renameTarget && (
+        <RenameModal
+          projectName={projectDetail.folder_name}
+          filename={renameTarget}
+          onClose={() => setRenameTarget(null)}
+          onRenamed={(newFilename) => {
+            queryClient.invalidateQueries({ queryKey: ['project', projectDetail.folder_name] });
+            onRenameDoc?.(newFilename);
+          }}
         />
       )}
     </div>

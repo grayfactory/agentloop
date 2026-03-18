@@ -24,6 +24,9 @@
 | 5 | 멀티/싱글 프로젝트 자동 감지 | docs_root 구조에 따라 백엔드 자동 판별 |
 | 6 | 문서 생성/삭제 | "+ 새 문서" 버튼 (.md 자동, ⌘Enter) + 삭제 확인 모달, DELETE API |
 | 7 | 프로젝트 삭제 | 사이드바 hover 삭제 버튼 → 확인 모달, 싱글 모드 차단, 선택 해제 |
+| 8 | 드래그앤드롭 업로드 | OS 파일을 문서 패널로 드래그앤드롭, 미분류로 자동 추가 |
+| 8 | ⌘E 단축키 | 편집/미리보기 토글 단축키 (⌘E / Ctrl+E) |
+| 9 | 파일명 변경 | hover 시 연필 아이콘 → RenameModal, 확장자 제외 자동선택, PATCH API |
 
 ## 기술 스택
 
@@ -52,7 +55,7 @@ agentloop/
 │   ├── services/
 │   │   ├── index_service.py     # index.md 정규식 파싱
 │   │   ├── project_service.py   # 프로젝트 목록/초기화/삭제 + orphan 통합
-│   │   └── document_service.py  # 문서 CRUD, orphan 감지, 피드백 삽입
+│   │   └── document_service.py  # 문서 CRUD, rename, orphan 감지, 피드백 삽입
 │   └── routers/
 │       ├── projects.py          # /api/projects
 │       ├── documents.py         # /api/projects/{name}/documents + feedback
@@ -86,6 +89,7 @@ agentloop/
 │           ├── InitProjectModal.tsx
 │           ├── CreateDocumentModal.tsx
 │           ├── DeleteConfirmModal.tsx
+│           ├── RenameModal.tsx
 │           ├── DeleteProjectModal.tsx
 │           └── DirectoryPickerModal.tsx
 │
@@ -142,6 +146,7 @@ docs_root: "/path/to/docs"
 | POST | `/api/projects/{name}/documents` | 문서 생성 |
 | GET | `/api/projects/{name}/documents/{filename}` | 문서 내용 (raw md) |
 | PUT | `/api/projects/{name}/documents/{filename}` | 문서 내용 수정 |
+| PATCH | `/api/projects/{name}/documents/{filename}` | 파일명 변경 |
 | DELETE | `/api/projects/{name}/documents/{filename}` | 문서 삭제 |
 | POST | `/api/projects/{name}/documents/{filename}/feedback` | 인라인 피드백 삽입 |
 | GET | `/api/projects/{name}/worklog` | 작업 로그 |

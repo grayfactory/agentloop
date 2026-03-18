@@ -102,6 +102,11 @@ export default function WorkspacePage() {
             onSelectDoc={selectDocument}
             compareDoc={compareDoc}
             onSelectCompare={setCompareDoc}
+            onRenameDoc={(newFilename) => {
+              if (selectedProject) {
+                setSearchParams({ project: selectedProject, doc: newFilename });
+              }
+            }}
           />
         </section>
 

@@ -93,6 +93,31 @@ def upload_file(project_name: str, filename: str, content: bytes) -> str:
     return filename
 
 
+def rename_document(project_name: str, old_filename: str, new_filename: str) -> str:
+    """Rename a document file within the project directory."""
+    project_dir = resolve_project_dir(project_name)
+    if not project_dir.exists():
+        raise FileNotFoundError(f"프로젝트를 찾을 수 없습니다: {project_name}")
+
+    for fn in [old_filename, new_filename]:
+        if "/" in fn or "\\" in fn or ".." in fn:
+            raise ValueError(f"잘못된 파일명입니다: {fn}")
+
+    if old_filename in SYSTEM_FILES:
+        raise ValueError(f"시스템 파일은 이름을 변경할 수 없습니다: {old_filename}")
+
+    old_path = project_dir / old_filename
+    new_path = project_dir / new_filename
+
+    if not old_path.exists():
+        raise FileNotFoundError(f"파일을 찾을 수 없습니다: {old_filename}")
+    if new_path.exists():
+        raise FileExistsError(f"이미 존재하는 파일입니다: {new_filename}")
+
+    old_path.rename(new_path)
+    return new_filename
+
+
 def delete_document(project_name: str, filename: str) -> str:
     """Delete a document file from the project directory."""
     project_dir = resolve_project_dir(project_name)

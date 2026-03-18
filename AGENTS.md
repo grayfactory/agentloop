@@ -42,6 +42,7 @@ agentloop/
 | index.md 파싱 로직 | `backend/services/index_service.py` | 정규식 기반, 포맷 변경 시 주의 |
 | 프로젝트 모드 판별 | `backend/config.py` → `is_single_project_mode()` | 폴더명 패턴 `\d{3}_.+` 기준 |
 | 문서 생성/삭제 | `backend/services/document_service.py` + `frontend/src/components/CreateDocumentModal.tsx`, `DeleteConfirmModal.tsx` | BE: create_document/delete_document, FE: 모달 UI |
+| 파일명 변경 | `backend/services/document_service.py` + `backend/routers/documents.py` + `frontend/src/components/RenameModal.tsx` | BE: rename_document (PATCH), FE: 모달 + hover 연필 버튼 |
 | 파일 업로드 (DnD) | `backend/services/document_service.py` + `backend/routers/documents.py` + `frontend/src/components/DocumentPanel.tsx` | BE: upload_file (write_bytes), FE: HTML5 드래그앤드롭 |
 | 프로젝트 삭제 | `backend/services/project_service.py` + `frontend/src/components/DeleteProjectModal.tsx` | BE: delete_project (shutil.rmtree), FE: 확인 모달 + 사이드바 버튼 |
 

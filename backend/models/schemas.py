@@ -76,6 +76,10 @@ class BrowseResponse(BaseModel):
     directories: list[DirectoryEntry]
 
 
+class RenameDocumentRequest(BaseModel):
+    new_filename: str
+
+
 class UploadError(BaseModel):
     filename: str
     detail: str

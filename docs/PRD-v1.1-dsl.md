@@ -1,4 +1,4 @@
-# AgentLoop — PRD v1.7 (DSL Summary)
+# AgentLoop — PRD v1.8 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
 > 최종 갱신: 2026-03-18
@@ -17,7 +17,8 @@
 ├── v1.4: 동적 docs_root 설정 + 멀티/싱글 프로젝트 자동 감지
 ├── v1.5: 문서 생성/삭제 UI + DELETE API
 ├── v1.6: 프로젝트 삭제 기능 (DELETE API + 확인 모달)
-└── v1.7: 드래그앤드롭 파일 업로드 + ⌘E 편집/미리보기 토글 단축키
+├── v1.7: 드래그앤드롭 파일 업로드 + ⌘E 편집/미리보기 토글 단축키
+└── v1.8: 파일명 변경(rename) 기능 — PATCH API + RenameModal
 ```
 
 ---
@@ -66,6 +67,7 @@ DirectoryEntry { name, path }                                           # v1.4 N
 BrowseResponse { current_path, parent_path, directories[] }             # v1.4 NEW
 UploadError    { filename, detail }                                      # v1.7 NEW
 UploadResult   { uploaded[], errors[] }                                  # v1.7 NEW
+RenameDocumentRequest { new_filename }                                   # v1.8 NEW
 ```
 
 **문서 코드 체계:**
@@ -113,6 +115,9 @@ GET    /api/projects/{name}/documents/{filename}  → raw markdown (text/plain)
 PUT    /api/projects/{name}/documents/{filename}  → { status }                 # v1.3 NEW
        ← { content }
        # 기존 문서 내용 덮어쓰기 (브라우저 편집 모드)
+PATCH  /api/projects/{name}/documents/{filename}  → { old_filename, new_filename, status }  # v1.8 NEW
+       ← { new_filename }
+       # 문서 파일명 변경 (시스템 파일 보호, 경로 조작 방지, 중복 검증)
 DELETE /api/projects/{name}/documents/{filename}  → { status }                 # v1.5 NEW
        # 문서 파일 삭제 (시스템 파일 보호, 경로 조작 방지)
 POST   /api/projects/{name}/upload                → UploadResult               # v1.7 NEW
@@ -178,6 +183,8 @@ URL: /?project={folder_name}&doc={filename}
 │ [CreateDocumentModal] — 파일명(.md 자동) + 내용 → POST /documents │  # v1.5 NEW
 │   ⌘Enter 단축키 생성, .md 확장자 자동 추가, autoFocus            │
 │ [DeleteConfirmModal] — 확인 → DELETE /documents/{filename}       │  # v1.5 NEW
+│ [RenameModal] — 새 파일명 입력 → PATCH /documents/{filename}    │  # v1.8 NEW
+│   확장자 제외 자동선택, Enter/⌘Enter 단축키, 중복/빈값 검증     │
 │ [DeleteProjectModal] — 확인 → DELETE /projects/{name}           │  # v1.6 NEW
 │   프로젝트명 표시, "모든 문서 함께 삭제" 경고                      │
 │ [SkillTemplateModal] — 스킬 템플릿 CRUD (localStorage)           │
@@ -192,9 +199,10 @@ URL searchParams       → selectedProject, selectedDoc
 localStorage           → sidebar-collapsed, project-order (DnD), skill-templates (F7)
 React state            → compareDoc (Diff 모드), showInitModal, checkedDocs (F6),
                           isEditing (편집 모드 토글, ⌘E 단축키),         # v1.3 NEW / v1.7 UPD
-                          isDragOver, uploadError (드래그앤드롭 상태),    # v1.7 NEW
-                           showDirectoryPicker (설정 모달),               # v1.4 NEW
-                           showCreateModal, deleteTarget (문서 생성/삭제), # v1.5 NEW
+                           isDragOver, uploadError (드래그앤드롭 상태),    # v1.7 NEW
+                            showDirectoryPicker (설정 모달),               # v1.4 NEW
+                            showCreateModal, deleteTarget (문서 생성/삭제), # v1.5 NEW
+                            renameTarget (파일명 변경),                     # v1.8 NEW
                            deleteProjectTarget (프로젝트 삭제)            # v1.6 NEW
 TanStack Query         → projects (30s), projectDetail (10s), documentContent (10s), config
                           refetchInterval 기반 자동 새로고침            # v1.3 NEW
@@ -223,11 +231,13 @@ agentloop/
 │   │                            #   detect_orphans(), insert_feedback(),
 │   │                            #   create_document(), update_document_content(),  # v1.3 NEW
 │   │                            #   delete_document(),                             # v1.5 NEW
-│   │                            #   upload_file() (바이너리 파일 업로드)            # v1.7 NEW
+│   │                            #   upload_file() (바이너리 파일 업로드),           # v1.7 NEW
+│   │                            #   rename_document() (파일명 변경)                # v1.8 NEW
 │   └── routers/
 │       ├── projects.py          # /api/projects CRUD + DELETE              # v1.6 UPD
 │       ├── documents.py         # /api/projects/{name}/documents + feedback
 │       │                        #   + POST create + PUT update + DELETE     # v1.3/v1.5
+│       │                        #   + PATCH rename (파일명 변경)            # v1.8 NEW
 │       │                        #   + POST /upload (multipart)              # v1.7 NEW
 │       └── config.py            # PUT /api/config + GET /api/browse         # v1.4 NEW
 │
@@ -240,6 +250,7 @@ agentloop/
 │       │                        #   + deleteDocument()                          # v1.5 NEW
 │       │                        #   + deleteProject()                           # v1.6 NEW
 │       │                        #   + uploadFiles() (FormData multipart)        # v1.7 NEW
+│       │                        #   + renameDocument()                          # v1.8 NEW
 │       │                        #   + updateConfig(), browsePath()               # v1.4 NEW
 │       ├── App.tsx              # → WorkspacePage (단일 렌더)
 │       ├── plugins/
@@ -502,4 +513,20 @@ v1.6 → v1.7 주요 변경:
 │       편집/미리보기 버튼에 "⌘E" 힌트 텍스트 + title 속성 추가
 │       DocumentEditor의 ⌘S 패턴과 동일한 구현 방식
 └── 컴포넌트 수: 20개 (변경 없음, 기존 컴포넌트 수정만)
+
+v1.7 → v1.8 주요 변경:
+├── F19: 파일명 변경 (Rename)
+│       Backend: rename_document() 서비스 (시스템 파일 보호, 경로 조작 방지, 중복 검증)
+│       Backend: PATCH /api/projects/{name}/documents/{filename} 엔드포인트
+│       신규 Pydantic 모델: RenameDocumentRequest (new_filename)
+│       신규 RenameModal: 파일명 입력 다이얼로그 (DeleteConfirmModal 패턴)
+│       입력 필드 자동 포커스 + 확장자 제외 텍스트 선택 (setSelectionRange)
+│       Enter / ⌘Enter / Esc 단축키 지원
+│       빈값/동일이름 프론트엔드 검증 + 서버 에러 표시
+│       DocumentList, OrphanSection에 hover 시 연필 아이콘 이름 변경 버튼 추가
+│       DocumentPanel에 renameTarget 상태 + RenameModal 렌더링
+│       WorkspacePage에 onRenameDoc 콜백 → URL searchParams doc 파라미터 동기화
+│       queryClient.invalidateQueries()로 rename 후 목록 즉시 반영
+│       Frontend API: renameDocument() (PATCH, encodeURIComponent)
+└── 컴포넌트 수: 20 → 21 (RenameModal 추가)
 ```

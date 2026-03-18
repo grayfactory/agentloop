@@ -38,6 +38,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 ├── InitProjectModal       # Create project dialog
 ├── CreateDocumentModal    # Create new markdown document
 ├── DeleteConfirmModal     # Confirm document deletion
+├── RenameModal            # Rename document dialog (auto-select filename, Enter/⌘Enter/Esc)
 ├── DeleteProjectModal     # Confirm project deletion (sidebar hover trigger)
 ├── DirectoryPickerModal   # Select docs_root path
 └── SkillTemplateModal     # Skill template CRUD
@@ -85,5 +86,5 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **QueryClient staleTime** — 30s default (set in `main.tsx`)
 - **ESM only** — `"type": "module"` in package.json; `verbatimModuleSyntax` in tsconfig
 - **Build** — `tsc -b && vite build`; TypeScript errors block build
-- **키보드 단축키** — ⌘S (편집 모드 저장, DocumentEditor), ⌘E (편집/미리보기 토글, ViewerPanel), ⌘Enter (모달 제출)
+- **키보드 단축키** — ⌘S (편집 모드 저장, DocumentEditor), ⌘E (편집/미리보기 토글, ViewerPanel), ⌘Enter (모달 제출), Enter (RenameModal 제출)
 - **드래그앤드롭 패턴** — @dnd-kit은 Pointer Events 기반 (프로젝트 순서 변경), 파일 업로드는 네이티브 HTML5 Drag Events 기반 (DocumentPanel). 충돌 없음 — `dataTransfer.types.includes('Files')` 가드로 구분. `dragCounter` ref로 자식 요소 경계 플리커 방지.

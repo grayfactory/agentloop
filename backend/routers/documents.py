@@ -4,6 +4,7 @@ from models.schemas import (
     CreateDocumentRequest,
     Document,
     FeedbackRequest,
+    RenameDocumentRequest,
     UpdateDocumentRequest,
     UploadError,
     UploadResult,
@@ -16,6 +17,7 @@ from services.document_service import (
     get_worklogs,
     insert_feedback,
     list_documents,
+    rename_document,
     update_document_content,
     upload_file,
 )
@@ -75,6 +77,19 @@ async def upload_files_endpoint(name: str, files: list[UploadFile]):
             errors.append(UploadError(filename=filename, detail=str(e)))
 
     return UploadResult(uploaded=uploaded, errors=errors)
+
+
+@router.patch("/documents/{filename}")
+def rename_document_endpoint(name: str, filename: str, req: RenameDocumentRequest):
+    try:
+        new_name = rename_document(name, filename, req.new_filename)
+        return {"old_filename": filename, "new_filename": new_name, "status": "renamed"}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FileExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/documents/{filename}")
