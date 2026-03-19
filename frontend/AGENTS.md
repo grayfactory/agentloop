@@ -30,9 +30,9 @@ App.tsx → WorkspacePage.tsx (sole page)
 │   ├── ContextBuilder     # Checkbox → PROMPT_*.md generation
 │   ├── SkillTemplateSelector
 │   └── WorkLog            # Work log entries
-├── ViewerPanel            # Right column (flex-1) + clipboard copy + scroll restore + ⌘E toggle
-│   ├── MarkdownViewer     # Markdown render + source line annotations
-│   ├── DocumentEditor     # Textarea + Cmd+S save
+├── ViewerPanel            # Right column (flex-1) + clipboard copy + scroll restore + ⌘E toggle + scroll sync
+│   ├── MarkdownViewer     # Markdown render + source line annotations + dark code theme
+│   ├── DocumentEditor     # Textarea + Cmd+S save + Tab 2-space indent + scroll sync props
 │   ├── FeedbackPopover    # Text select → floating feedback UI
 │   └── DiffViewer         # Split-view document comparison
 ├── InitProjectModal       # Create project dialog
@@ -53,7 +53,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **Tailwind v4** — Uses `@tailwindcss/vite` plugin (not PostCSS). Import `@tailwindcss/typography` for prose.
 - **No global state** — Server state in TanStack Query; UI state in component state + localStorage
 - **localStorage keys** — `'sidebar-collapsed'`, `'project-order'`, `'skill-templates'`
-- **Flat components dir** — No feature folders. 20 components in single `components/` directory.
+- **Flat components dir** — No feature folders. 21 components in single `components/` directory.
 - **API client pattern** — `const res = await fetch(...)` → check `res.ok` → throw Korean error messages
 - **Props pattern** — Inline type annotations in function params, no separate Props interfaces
 
@@ -86,5 +86,8 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **QueryClient staleTime** — 30s default (set in `main.tsx`)
 - **ESM only** — `"type": "module"` in package.json; `verbatimModuleSyntax` in tsconfig
 - **Build** — `tsc -b && vite build`; TypeScript errors block build
-- **키보드 단축키** — ⌘S (편집 모드 저장, DocumentEditor), ⌘E (편집/미리보기 토글, ViewerPanel), ⌘Enter (모달 제출), Enter (RenameModal 제출)
+- **키보드 단축키** — ⌘S (편집 모드 저장, DocumentEditor), ⌘E (편집/미리보기 토글, ViewerPanel), ⌘Enter (모달 제출), Enter (RenameModal 제출), Tab (편집 모드 2-space 들여쓰기, DocumentEditor)
 - **드래그앤드롭 패턴** — @dnd-kit은 Pointer Events 기반 (프로젝트 순서 변경), 파일 업로드는 네이티브 HTML5 Drag Events 기반 (DocumentPanel). 충돌 없음 — `dataTransfer.types.includes('Files')` 가드로 구분. `dragCounter` ref로 자식 요소 경계 플리커 방지.
+- **스크롤 동기화** — ⌘E 토글 시 미리보기↔편집기 간 스크롤 위치 동기화. utils/scrollSync.ts의 4개 함수(findFirstVisibleSourceLine, scrollTextareaToLine, getLineFromCursor, scrollPreviewToSourceLine) + ViewerPanel의 syncLineRef/editorCursorLineRef + DocumentEditor의 initialLine/cursorLineRef props. rehypeSourceLine 플러그인의 data-source-line 속성이 핵심 인프라.
+- **코드블럭 테마** — highlight.js github-dark.css 사용. MarkdownViewer에 prose-pre Tailwind 오버라이드 적용 (bg-[#0d1117], border-gray-700, text-gray-200).
+- **Tab indent** — DocumentEditor textarea onKeyDown에서 Tab 키 인터셉트 → 2 spaces 삽입. requestAnimationFrame으로 커서 위치 복원.

@@ -21,7 +21,7 @@ agentloop/
 │   └── src/
 │       ├── api/client.ts # fetch 래퍼 + TS 인터페이스 (backend 스키마 수동 미러)
 │       ├── pages/        # WorkspacePage (3컬럼 Master-Detail, 유일한 페이지)
-│       ├── components/   # 20개 React 컴포넌트 (flat 구조)
+│       ├── components/   # 21개 React 컴포넌트 (flat 구조)
 │       ├── hooks/        # localStorage 기반 커스텀 훅 2개
 │       └── plugins/      # rehype 커스텀 플러그인
 ├── docs/                 # 기획/설계 문서 (PRD, 기술설계서, 구현가이드)
@@ -45,6 +45,7 @@ agentloop/
 | 파일명 변경 | `backend/services/document_service.py` + `backend/routers/documents.py` + `frontend/src/components/RenameModal.tsx` | BE: rename_document (PATCH), FE: 모달 + hover 연필 버튼 |
 | 파일 업로드 (DnD) | `backend/services/document_service.py` + `backend/routers/documents.py` + `frontend/src/components/DocumentPanel.tsx` | BE: upload_file (write_bytes), FE: HTML5 드래그앤드롭 |
 | 프로젝트 삭제 | `backend/services/project_service.py` + `frontend/src/components/DeleteProjectModal.tsx` | BE: delete_project (shutil.rmtree), FE: 확인 모달 + 사이드바 버튼 |
+| 스크롤 동기화 | `frontend/src/utils/scrollSync.ts` + `frontend/src/components/ViewerPanel.tsx` + `DocumentEditor.tsx` | data-source-line 기반 미리보기↔편집 위치 동기화 |
 
 ## CONVENTIONS
 
@@ -92,3 +93,6 @@ cd frontend && npm run lint    # ESLint
 - **config.yaml gitignore됨**: `backend/config.yaml`은 런타임 생성, git 추적 안 함.
 - **에러 바운더리 없음**: React Error Boundary 미구현. 에러 시 앱 전체 크래시 가능.
 - **QueryClient**: `staleTime: 30_000`. 프로젝트 목록 30초, 프로젝트 상세 10초 자동 갱신.
+- **Tab indent**: DocumentEditor textarea에서 Tab 키 → 2 spaces 삽입. requestAnimationFrame으로 커서 위치 복원.
+- **코드블럭 테마**: highlight.js github-dark.css + Tailwind prose-pre 오버라이드로 다크 배경 적용.
+- **스크롤 동기화**: ⌘E 토글 시 미리보기↔편집기 간 스크롤 위치 동기화. scrollSync.ts 유틸 + rehypeSourceLine의 data-source-line 속성 활용.

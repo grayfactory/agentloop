@@ -27,6 +27,9 @@
 | 8 | 드래그앤드롭 업로드 | OS 파일을 문서 패널로 드래그앤드롭, 미분류로 자동 추가 |
 | 8 | ⌘E 단축키 | 편집/미리보기 토글 단축키 (⌘E / Ctrl+E) |
 | 9 | 파일명 변경 | hover 시 연필 아이콘 → RenameModal, 확장자 제외 자동선택, PATCH API |
+| 9 | Tab 들여쓰기 | 편집 모드에서 Tab 키 → 2 spaces 삽입, 커서 위치 자동 복원 |
+| 9 | 코드블럭 다크 테마 | github-dark 테마로 코드블럭 배경/텍스트 가독성 개선 |
+| 9 | 스크롤 동기화 | ⌘E 토글 시 미리보기↔편집기 간 보던 위치 유지, data-source-line 기반 |
 
 ## 기술 스택
 
@@ -69,6 +72,8 @@ agentloop/
 │       ├── App.tsx              # → WorkspacePage (단일 렌더)
 │       ├── plugins/
 │       │   └── rehypeSourceLine.ts
+│       ├── utils/
+│       │   └── scrollSync.ts    # 미리보기↔편집 스크롤 동기화 유틸
 │       ├── hooks/
 │       │   ├── useProjectOrder.ts
 │       │   └── useSkillTemplates.ts

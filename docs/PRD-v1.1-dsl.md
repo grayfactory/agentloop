@@ -1,7 +1,7 @@
-# AgentLoop — PRD v1.8 (DSL Summary)
+# AgentLoop — PRD v1.9 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-03-18
+> 최종 갱신: 2026-03-19
 
 ---
 
@@ -18,7 +18,8 @@
 ├── v1.5: 문서 생성/삭제 UI + DELETE API
 ├── v1.6: 프로젝트 삭제 기능 (DELETE API + 확인 모달)
 ├── v1.7: 드래그앤드롭 파일 업로드 + ⌘E 편집/미리보기 토글 단축키
-└── v1.8: 파일명 변경(rename) 기능 — PATCH API + RenameModal
+├── v1.8: 파일명 변경(rename) 기능 — PATCH API + RenameModal
+└── v1.9: Tab 2-space 들여쓰기 + 코드블럭 다크 테마 + 미리보기↔편집 스크롤 동기화
 ```
 
 ---
@@ -162,6 +163,7 @@ URL: /?project={folder_name}&doc={filename}
 │  소방    │                       │  - 10초 자동 새로고침            │
 │         │                       │  - 문서 전환 시 스크롤 위치 복원  │
 │         │                       │  - ⌘E 편집/미리보기 토글 단축키  │
+│         │                       │  - 미리보기↔편집 스크롤 위치 동기화 (⌘E) │
 │         │ [드래그앤드롭 업로드]  │                                │
 │         │  OS파일→패널 드롭     │                                │
 │         │  오버레이 피드백      │                                │
@@ -171,6 +173,7 @@ URL: /?project={folder_name}&doc={filename}
 │         │   ☐ 101 공고문요약.md │ DocumentEditor (편집 모드)      │
 │         │                       │  - monospace textarea           │
 │         │ ─────────────────── │  - ⌘S 저장 + 저장 버튼           │
+│         │                       │  - Tab키 2-space 들여쓰기        │
 │         │ [ContextBuilder]      │  - 변경됨/저장됨 상태 표시       │
 │         │  2개 선택      [해제] │  - 자동 새로고침 비활성화        │
 │         │ [비교][프롬프트파일생성]│                                │
@@ -255,6 +258,8 @@ agentloop/
 │       ├── App.tsx              # → WorkspacePage (단일 렌더)
 │       ├── plugins/
 │       │   └── rehypeSourceLine.ts  # HTML data-source-line 속성 주입
+│       ├── utils/
+│       │   └── scrollSync.ts        # 미리보기↔편집 스크롤 동기화 유틸
 │       ├── hooks/
 │       │   ├── useProjectOrder.ts   # DnD 순서 localStorage 관리
 │       │   └── useSkillTemplates.ts # 스킬 템플릿 CRUD localStorage 관리   # v1.2 NEW
@@ -276,10 +281,10 @@ agentloop/
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
 │           ├── WorkLog.tsx           # 작업 로그 표시
-│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 + 스크롤 위치 복원 + ⌘E 단축키  # v1.7 UPD
-│           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장)      # v1.3 NEW
-│           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백
-│           │                        #   + 10초 자동 새로고침               # v1.3 UPD
+│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 + 스크롤 위치 복원 + ⌘E 단축키 + 스크롤 동기화  # v1.7 UPD / v1.9 UPD
+│           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장, Tab 2-space, scrollSync props)  # v1.3 NEW / v1.9 UPD
+│           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백 + 코드블럭 다크 테마
+│           │                        #   + 10초 자동 새로고침               # v1.3 UPD / v1.9 UPD
 │           ├── FeedbackPopover.tsx   # 텍스트 선택 → 플로팅 버튼 → 지시 입력
 │           ├── DiffViewer.tsx        # 두 문서 Split View 비교
 │           ├── InitProjectModal.tsx  # 프로젝트 생성 모달
@@ -352,6 +357,14 @@ agentloop/
 |------|------|------|
 | F17. 드래그앤드롭 파일 업로드 | ✅ | POST /upload (multipart), DocumentPanel 드롭존, dragCounter 패턴, 부분 성공, 미분류로 자동 추가 |
 | F18. ⌘E 편집/미리보기 토글 단축키 | ✅ | ViewerPanel ⌘E/Ctrl+E 키보드 단축키, 버튼에 힌트 표시, compare 모드 시 비활성화 |
+
+### Phase 9 (편집 경험 개선) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F20. Tab 2-space 들여쓰기 | ✅ | 편집기 textarea Tab키 → 2 spaces 삽입, rAF 커서 복원 |
+| F21. 코드블럭 다크 테마 | ✅ | highlight.js github-dark 테마, prose-pre Tailwind 오버라이드 |
+| F22. 미리보기↔편집 스크롤 동기화 | ✅ | ⌘E 토글 시 보던 위치 유지, data-source-line 기반, scrollSync.ts 유틸 |
 
 ---
 
@@ -529,4 +542,21 @@ v1.7 → v1.8 주요 변경:
 │       queryClient.invalidateQueries()로 rename 후 목록 즉시 반영
 │       Frontend API: renameDocument() (PATCH, encodeURIComponent)
 └── 컴포넌트 수: 20 → 21 (RenameModal 추가)
+
+v1.8 → v1.9 주요 변경:
+├── F20: Tab 2-space 들여쓰기
+│       DocumentEditor textarea onKeyDown Tab 핸들러 추가
+│       Tab 키 → 2 spaces 삽입, requestAnimationFrame 커서 복원
+├── F21: 코드블럭 다크 테마
+│       index.css: highlight.js github.css → github-dark.css 변경
+│       MarkdownViewer: prose-pre:bg-[#0d1117] prose-pre:border-gray-700 prose-pre:text-gray-200
+│       코드블럭 배경/텍스트 대비 가독성 대폭 개선
+├── F22: 미리보기↔편집 스크롤 위치 동기화
+│       신규 frontend/src/utils/scrollSync.ts (4개 유틸 함수)
+│       ViewerPanel: syncLineRef, editorCursorLineRef, handleToggleEditing()
+│       DocumentEditor: initialLine/cursorLineRef props, scroll-to-line effect, onSelect handler
+│       미리보기→편집: 첫 번째 보이는 소스 라인 캡처 → textarea 해당 줄로 스크롤 + 커서
+│       편집→미리보기: 커서 줄번호 캡처 → data-source-line 요소로 스크롤 (double rAF)
+│       rehypeSourceLine 플러그인의 data-source-line 속성 활용
+└── 컴포넌트 수: 21개 (변경 없음, 기존 컴포넌트 수정 + 신규 utils 추가)
 ```
