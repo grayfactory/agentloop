@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchDocumentContent, updateDocumentContent } from '../api/client';
+import { scrollTextareaToLine } from '../utils/scrollSync';
 
 interface Props {
   projectName: string;
   filename: string;
+  initialLine?: number | null;
+  cursorLineRef?: { current: number };
 }
 
-export default function DocumentEditor({ projectName, filename }: Props) {
+export default function DocumentEditor({ projectName, filename, initialLine, cursorLineRef }: Props) {
   const queryClient = useQueryClient();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -19,6 +22,11 @@ export default function DocumentEditor({ projectName, filename }: Props) {
 
   const [content, setContent] = useState('');
   const [isDirty, setIsDirty] = useState(false);
+  const didScrollToInitialLine = useRef(false);
+
+  useEffect(() => {
+    didScrollToInitialLine.current = false;
+  }, [filename]);
 
   useEffect(() => {
     if (initialContent !== undefined) {
@@ -26,6 +34,17 @@ export default function DocumentEditor({ projectName, filename }: Props) {
       setIsDirty(false);
     }
   }, [initialContent]);
+
+  useEffect(() => {
+    if (didScrollToInitialLine.current) return;
+    if (initialLine == null || initialLine <= 0 || !content || !textareaRef.current) return;
+    didScrollToInitialLine.current = true;
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        scrollTextareaToLine(textareaRef.current, content, initialLine);
+      }
+    });
+  }, [initialLine, content]);
 
   const saveMutation = useMutation({
     mutationFn: () => updateDocumentContent(projectName, filename, content),
@@ -95,6 +114,27 @@ export default function DocumentEditor({ projectName, filename }: Props) {
         onChange={(e) => {
           setContent(e.target.value);
           setIsDirty(true);
+        }}
+        onSelect={() => {
+          if (cursorLineRef && textareaRef.current) {
+            const pos = textareaRef.current.selectionStart;
+            cursorLineRef.current = textareaRef.current.value.slice(0, pos).split('\n').length;
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const ta = e.currentTarget;
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const spaces = '  ';
+            const next = content.slice(0, start) + spaces + content.slice(end);
+            setContent(next);
+            setIsDirty(true);
+            requestAnimationFrame(() => {
+              ta.selectionStart = ta.selectionEnd = start + spaces.length;
+            });
+          }
         }}
         className="flex-1 w-full p-4 font-mono text-sm text-gray-800 bg-white resize-none focus:outline-none"
         spellCheck={false}

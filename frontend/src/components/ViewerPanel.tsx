@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { findFirstVisibleSourceLine, scrollPreviewToSourceLine } from '../utils/scrollSync';
 import MarkdownViewer from './MarkdownViewer';
 import DiffViewer from './DiffViewer';
 import DocumentEditor from './DocumentEditor';
@@ -16,6 +17,8 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
   const [copied, setCopied] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositionsRef = useRef(new Map<string, number>());
+  const syncLineRef = useRef<number | null>(null);
+  const editorCursorLineRef = useRef(1);
 
   useEffect(() => {
     setIsEditing(false);
@@ -38,14 +41,34 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
     );
   }, [projectName, filename]);
 
+  const handleToggleEditing = useCallback(() => {
+    if (!isEditing && scrollContainerRef.current) {
+      syncLineRef.current = findFirstVisibleSourceLine(scrollContainerRef.current);
+    } else if (isEditing) {
+      syncLineRef.current = editorCursorLineRef.current;
+    }
+    setIsEditing(prev => !prev);
+  }, [isEditing]);
+
   useEffect(() => {
     if (!projectName || !filename || isEditing) return;
     const el = scrollContainerRef.current;
     if (!el) return;
-    const saved = scrollPositionsRef.current.get(`${projectName}/${filename}`);
-    requestAnimationFrame(() => {
-      el.scrollTop = saved ?? 0;
-    });
+
+    if (syncLineRef.current != null) {
+      const targetLine = syncLineRef.current;
+      syncLineRef.current = null;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollPreviewToSourceLine(el, targetLine);
+        });
+      });
+    } else {
+      const saved = scrollPositionsRef.current.get(`${projectName}/${filename}`);
+      requestAnimationFrame(() => {
+        el.scrollTop = saved ?? 0;
+      });
+    }
   }, [projectName, filename, isEditing]);
 
   useEffect(() => {
@@ -53,12 +76,12 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
         e.preventDefault();
-        setIsEditing((prev) => !prev);
+        handleToggleEditing();
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [projectName, filename, compareFilename]);
+  }, [projectName, filename, compareFilename, handleToggleEditing]);
 
   if (!projectName || !filename) {
     return (
@@ -98,7 +121,7 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
             </button>
           )}
           <button
-            onClick={() => setIsEditing(!isEditing)}
+            onClick={handleToggleEditing}
             className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
               isEditing
                 ? 'bg-indigo-100 text-indigo-700'
@@ -116,6 +139,8 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
         <DocumentEditor
           projectName={projectName}
           filename={filename}
+          initialLine={syncLineRef.current}
+          cursorLineRef={editorCursorLineRef}
         />
       ) : (
         <div

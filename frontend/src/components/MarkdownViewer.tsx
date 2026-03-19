@@ -37,7 +37,7 @@ export default function MarkdownViewer({ projectName, filename }: Props) {
 
   return (
     <div className="relative">
-      <div className="prose prose-slate max-w-none prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2 prose-blockquote:border-indigo-500 prose-pre:bg-slate-50 prose-pre:border prose-pre:border-gray-200 prose-pre:rounded-lg prose-th:bg-gray-50">
+      <div className="prose prose-slate max-w-none prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2 prose-blockquote:border-indigo-500 prose-pre:bg-[#0d1117] prose-pre:border prose-pre:border-gray-700 prose-pre:rounded-lg prose-pre:text-gray-200 prose-th:bg-gray-50">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeHighlight, rehypeSourceLine]}
