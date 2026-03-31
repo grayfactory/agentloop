@@ -30,6 +30,7 @@
 | 9 | Tab 들여쓰기 | 편집 모드에서 Tab 키 → 2 spaces 삽입, 커서 위치 자동 복원 |
 | 9 | 코드블럭 다크 테마 | github-dark 테마로 코드블럭 배경/텍스트 가독성 개선 |
 | 9 | 스크롤 동기화 | ⌘E 토글 시 미리보기↔편집기 간 보던 위치 유지, data-source-line 기반 |
+| 10 | CLAUDE.md 프리셋 | 프로젝트 생성 시 프리셋 선택 (기본 3종), 커스텀 프리셋 CRUD, JSON 파일 기반 |
 
 ## 기술 스택
 
@@ -55,12 +56,18 @@ agentloop/
 │   ├── config.yaml              # docs_root 경로 (런타임 변경 시 자동 저장)
 │   ├── pyproject.toml           # uv, deps, dev script(:8066)
 │   ├── models/schemas.py        # Pydantic 모델
+│   ├── presets/                 # CLAUDE.md 프리셋 JSON 파일
+│   │   ├── default.json         #   기본 (정부지원사업)
+│   │   ├── minimal.json         #   최소 구성
+│   │   └── research.json        #   연구/논문 프로젝트
 │   ├── services/
 │   │   ├── index_service.py     # index.md 정규식 파싱
 │   │   ├── project_service.py   # 프로젝트 목록/초기화/삭제 + orphan 통합
+│   │   ├── preset_service.py    # 프리셋 CRUD + 템플릿 렌더링
 │   │   └── document_service.py  # 문서 CRUD, rename, orphan 감지, 피드백 삽입
 │   └── routers/
 │       ├── projects.py          # /api/projects
+│       ├── presets.py           # /api/presets CRUD
 │       ├── documents.py         # /api/projects/{name}/documents + feedback
 │       └── config.py            # PUT /api/config + GET /api/browse
 │
@@ -144,7 +151,7 @@ docs_root: "/path/to/docs"
 | PUT | `/api/config` | docs_root 런타임 변경 |
 | GET | `/api/browse?path=` | 디렉토리 탐색 |
 | GET | `/api/projects` | 프로젝트 목록 |
-| POST | `/api/projects` | 프로젝트 초기화 |
+| POST | `/api/projects` | 프로젝트 초기화 (preset_id 선택 가능) |
 | DELETE | `/api/projects/{name}` | 프로젝트 삭제 |
 | GET | `/api/projects/{name}` | 프로젝트 상세 (orphan, has_index 포함) |
 | GET | `/api/projects/{name}/documents` | 문서 목록 |
@@ -155,6 +162,11 @@ docs_root: "/path/to/docs"
 | DELETE | `/api/projects/{name}/documents/{filename}` | 문서 삭제 |
 | POST | `/api/projects/{name}/documents/{filename}/feedback` | 인라인 피드백 삽입 |
 | GET | `/api/projects/{name}/worklog` | 작업 로그 |
+| GET | `/api/presets` | 프리셋 목록 |
+| GET | `/api/presets/{id}` | 프리셋 상세 (content 포함) |
+| POST | `/api/presets` | 프리셋 생성 |
+| PUT | `/api/presets/{id}` | 프리셋 수정 |
+| DELETE | `/api/presets/{id}` | 프리셋 삭제 |
 
 ## 문서 코드 체계
 

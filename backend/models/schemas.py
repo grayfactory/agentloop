@@ -50,6 +50,7 @@ class ProjectDetail(BaseModel):
 class InitProjectRequest(BaseModel):
     num: str
     title: str
+    preset_id: str = "default"
 
 
 class CreateDocumentRequest(BaseModel):

@@ -1,7 +1,7 @@
-# AgentLoop — PRD v1.9 (DSL Summary)
+# AgentLoop — PRD v2.0 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-03-19
+> 최종 갱신: 2026-03-31
 
 ---
 
@@ -19,7 +19,8 @@
 ├── v1.6: 프로젝트 삭제 기능 (DELETE API + 확인 모달)
 ├── v1.7: 드래그앤드롭 파일 업로드 + ⌘E 편집/미리보기 토글 단축키
 ├── v1.8: 파일명 변경(rename) 기능 — PATCH API + RenameModal
-└── v1.9: Tab 2-space 들여쓰기 + 코드블럭 다크 테마 + 미리보기↔편집 스크롤 동기화
+├── v1.9: Tab 2-space 들여쓰기 + 코드블럭 다크 테마 + 미리보기↔편집 스크롤 동기화
+└── v2.0: CLAUDE.md 프리셋 시스템 — 프로젝트 생성 시 템플릿 선택 + 커스텀 프리셋 CRUD
 ```
 
 ---
@@ -69,6 +70,8 @@ BrowseResponse { current_path, parent_path, directories[] }             # v1.4 N
 UploadError    { filename, detail }                                      # v1.7 NEW
 UploadResult   { uploaded[], errors[] }                                  # v1.7 NEW
 RenameDocumentRequest { new_filename }                                   # v1.8 NEW
+InitProjectRequest   { num, title, preset_id="default" }                 # v2.0 UPD
+Preset               { id, name, description, content, builtin }         # v2.0 NEW (JSON file)
 ```
 
 **문서 코드 체계:**
@@ -104,7 +107,7 @@ PUT    /api/config        ← { docs_root }       → { docs_root, is_valid }   
 GET    /api/browse?path=                         → BrowseResponse             # v1.4 NEW
        # 디렉토리 탐색 (path 미지정 시 홈 디렉토리, 숨김 폴더 제외)
 GET    /api/projects                              → Project[]
-POST   /api/projects        ← { num, title }     → { folder_name, message }
+POST   /api/projects        ← { num, title, preset_id? }  → { folder_name, message }  # v2.0 UPD
 DELETE /api/projects/{name}                       → { message }                 # v1.6 NEW
        # 프로젝트 디렉토리 전체 삭제 (싱글 모드 차단, 이름 패턴 검증)
 GET    /api/projects/{name}                       → ProjectDetail (orphan_files, has_index 포함)
@@ -129,6 +132,12 @@ POST   /api/projects/{name}/documents/{filename}/feedback          # v1.1 NEW
        → { status: "ok" }
        # 원본 .md 파일의 line_number 위치에 피드백 블록 자동 삽입
 GET    /api/projects/{name}/worklog               → WorkLog[]
+GET    /api/presets                               → Preset[] (builtin 포함)     # v2.0 NEW
+GET    /api/presets/{id}                          → Preset (content 포함)       # v2.0 NEW
+POST   /api/presets         ← { id, name, description, content }  → Preset    # v2.0 NEW
+PUT    /api/presets/{id}    ← { id, name, description, content }  → Preset    # v2.0 NEW
+DELETE /api/presets/{id}                          → { message }                 # v2.0 NEW
+       # builtin 프리셋(default, minimal, research) 수정/삭제 차단
 ```
 
 **피드백 삽입 포맷 (마크다운 원본에 주입):**
@@ -182,7 +191,8 @@ URL: /?project={folder_name}&doc={filename}
 │         │ ▼ 작업 로그 (N)       │ DiffViewer (Split View)        │
 │         │   03-11 초기화        │  - 체크박스 2개 선택 → [비교]    │
 ├─────────┴───────────────────────┴────────────────────────────────┤
-│ [InitProjectModal] — num (3자리) + title → POST /api/projects    │
+│ [InitProjectModal] — num + title + 프리셋 선택 → POST /api/projects  │  # v2.0 UPD
+│   프리셋 드롭다운(⚙관리) → 인라인 뷰 전환 (목록/편집/미리보기)     │
 │ [CreateDocumentModal] — 파일명(.md 자동) + 내용 → POST /documents │  # v1.5 NEW
 │   ⌘Enter 단축키 생성, .md 확장자 자동 추가, autoFocus            │
 │ [DeleteConfirmModal] — 확인 → DELETE /documents/{filename}       │  # v1.5 NEW
@@ -227,9 +237,15 @@ agentloop/
 │   ├── models/schemas.py        # Pydantic: Project, Document, WorkLog,
 │   │                            #   OrphanFile, FeedbackRequest, ProjectDetail,
 │   │                            #   CreateDocumentRequest, UpdateDocumentRequest  # v1.3 NEW
+│   │                            #   InitProjectRequest에 preset_id 추가            # v2.0 UPD
+│   ├── presets/                 # CLAUDE.md 프리셋 JSON 파일 저장소                # v2.0 NEW
+│   │   ├── default.json         #   기본 (정부지원사업) 프리셋
+│   │   ├── minimal.json         #   최소 구성 프리셋
+│   │   └── research.json        #   연구/논문 프로젝트 프리셋
 │   ├── services/
 │   │   ├── index_service.py     # parse_index() — 정규식 md 테이블 파싱
-│   │   ├── project_service.py   # list/get/init/delete project + orphan 통합  # v1.6 UPD
+│   │   ├── preset_service.py    # 프리셋 CRUD + 템플릿 렌더링                     # v2.0 NEW
+│   │   ├── project_service.py   # list/get/init/delete project + orphan 통합  # v2.0 UPD
 │   │   └── document_service.py  # list docs, get content, get worklogs,
 │   │                            #   detect_orphans(), insert_feedback(),
 │   │                            #   create_document(), update_document_content(),  # v1.3 NEW
@@ -237,7 +253,8 @@ agentloop/
 │   │                            #   upload_file() (바이너리 파일 업로드),           # v1.7 NEW
 │   │                            #   rename_document() (파일명 변경)                # v1.8 NEW
 │   └── routers/
-│       ├── projects.py          # /api/projects CRUD + DELETE              # v1.6 UPD
+│       ├── projects.py          # /api/projects CRUD + DELETE + preset_id  # v2.0 UPD
+│       ├── presets.py           # /api/presets CRUD (builtin 보호)          # v2.0 NEW
 │       ├── documents.py         # /api/projects/{name}/documents + feedback
 │       │                        #   + POST create + PUT update + DELETE     # v1.3/v1.5
 │       │                        #   + PATCH rename (파일명 변경)            # v1.8 NEW
@@ -255,6 +272,8 @@ agentloop/
 │       │                        #   + uploadFiles() (FormData multipart)        # v1.7 NEW
 │       │                        #   + renameDocument()                          # v1.8 NEW
 │       │                        #   + updateConfig(), browsePath()               # v1.4 NEW
+│       │                        #   + fetchPresets/fetchPreset/createPreset/     # v2.0 NEW
+│       │                        #     updatePreset/deletePreset, Preset 인터페이스
 │       ├── App.tsx              # → WorkspacePage (단일 렌더)
 │       ├── plugins/
 │       │   └── rehypeSourceLine.ts  # HTML data-source-line 속성 주입
@@ -287,7 +306,7 @@ agentloop/
 │           │                        #   + 10초 자동 새로고침               # v1.3 UPD / v1.9 UPD
 │           ├── FeedbackPopover.tsx   # 텍스트 선택 → 플로팅 버튼 → 지시 입력
 │           ├── DiffViewer.tsx        # 두 문서 Split View 비교
-│           ├── InitProjectModal.tsx  # 프로젝트 생성 모달
+│           ├── InitProjectModal.tsx  # 프로젝트 생성 + 프리셋 관리 통합 모달  # v2.0 UPD
 │           ├── CreateDocumentModal.tsx  # 문서 생성 모달 (파일명+내용)       # v1.5 NEW
 │           ├── DeleteConfirmModal.tsx   # 문서 삭제 확인 다이얼로그          # v1.5 NEW
 │           ├── DeleteProjectModal.tsx  # 프로젝트 삭제 확인 다이얼로그      # v1.6 NEW
@@ -365,6 +384,12 @@ agentloop/
 | F20. Tab 2-space 들여쓰기 | ✅ | 편집기 textarea Tab키 → 2 spaces 삽입, rAF 커서 복원 |
 | F21. 코드블럭 다크 테마 | ✅ | highlight.js github-dark 테마, prose-pre Tailwind 오버라이드 |
 | F22. 미리보기↔편집 스크롤 동기화 | ✅ | ⌘E 토글 시 보던 위치 유지, data-source-line 기반, scrollSync.ts 유틸 |
+
+### Phase 10 (프리셋 시스템) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F23. CLAUDE.md 프리셋 | ✅ | 프로젝트 생성 시 프리셋 선택, 기본 3종(default/minimal/research), JSON 파일 기반 CRUD, builtin 보호, {{folder_name}}/{{project_title}} 템플릿 변수, InitProjectModal 인라인 뷰 전환 |
 
 ---
 
@@ -559,4 +584,22 @@ v1.8 → v1.9 주요 변경:
 │       편집→미리보기: 커서 줄번호 캡처 → data-source-line 요소로 스크롤 (double rAF)
 │       rehypeSourceLine 플러그인의 data-source-line 속성 활용
 └── 컴포넌트 수: 21개 (변경 없음, 기존 컴포넌트 수정 + 신규 utils 추가)
+
+v1.9 → v2.0 주요 변경:
+├── F23: CLAUDE.md 프리셋 시스템
+│       신규 backend/presets/ 디렉토리: JSON 파일 기반 프리셋 저장소
+│       기본 3종 builtin 프리셋: default(정부지원사업), minimal(최소구성), research(연구/논문)
+│       신규 preset_service.py: list/get/create/update/delete + render_template()
+│       신규 routers/presets.py: /api/presets CRUD 엔드포인트 (builtin 수정/삭제 차단)
+│       InitProjectRequest에 preset_id 필드 추가 (기본값 "default")
+│       project_service.py: init_project()에서 하드코딩 CLAUDE.md → 프리셋 기반 렌더링
+│       템플릿 변수: {{folder_name}}, {{project_title}}
+│       InitProjectModal 전면 개편: 프리셋 선택 드롭다운 + 인라인 뷰 전환
+│       form → preset-list → preset-edit/preset-preview 4개 뷰 (모달 중첩 없음)
+│       모달 너비 자동 확대 (form: max-w-md → 프리셋 관리: max-w-2xl)
+│       PresetManagerModal 삭제 (InitProjectModal에 통합)
+│       Frontend API: fetchPresets/fetchPreset/createPreset/updatePreset/deletePreset
+│       Preset 인터페이스: { id, name, description, builtin, content? }
+├── main.py: presets router 등록
+└── 컴포넌트 수: 21개 (변경 없음, InitProjectModal 기능 확장)
 ```

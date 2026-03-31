@@ -170,11 +170,69 @@ export async function updateDocumentContent(
   }
 }
 
-export async function createProject(num: string, title: string): Promise<{ folder_name: string; message: string }> {
+export interface Preset {
+  id: string;
+  name: string;
+  description: string;
+  builtin: boolean;
+  content?: string;
+}
+
+export async function fetchPresets(): Promise<Preset[]> {
+  const res = await fetch(`${BASE}/presets`);
+  return res.json();
+}
+
+export async function fetchPreset(presetId: string): Promise<Preset> {
+  const res = await fetch(`${BASE}/presets/${presetId}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '프리셋 조회 실패');
+  }
+  return res.json();
+}
+
+export async function createPreset(preset: { id: string; name: string; description: string; content: string }): Promise<Preset> {
+  const res = await fetch(`${BASE}/presets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(preset),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '프리셋 생성 실패');
+  }
+  return res.json();
+}
+
+export async function updatePreset(presetId: string, preset: { id: string; name: string; description: string; content: string }): Promise<Preset> {
+  const res = await fetch(`${BASE}/presets/${presetId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(preset),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '프리셋 수정 실패');
+  }
+  return res.json();
+}
+
+export async function deletePreset(presetId: string): Promise<void> {
+  const res = await fetch(`${BASE}/presets/${presetId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '프리셋 삭제 실패');
+  }
+}
+
+export async function createProject(num: string, title: string, presetId: string = 'default'): Promise<{ folder_name: string; message: string }> {
   const res = await fetch(`${BASE}/projects`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ num, title }),
+    body: JSON.stringify({ num, title, preset_id: presetId }),
   });
   if (!res.ok) {
     const err = await res.json();

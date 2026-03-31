@@ -15,8 +15,9 @@ agentloop/
 │   ├── main.py           # App entry, CORS, router 등록
 │   ├── config.py         # docs_root 관리, single/multi 모드 감지
 │   ├── models/schemas.py # Pydantic 모델 (전체 API 계약)
-│   ├── services/         # 비즈니스 로직 (project, document, index 파싱)
-│   └── routers/          # HTTP 엔드포인트 (projects, documents, config)
+│   ├── presets/          # CLAUDE.md 프리셋 JSON 파일 (default, minimal, research)
+│   ├── services/         # 비즈니스 로직 (project, document, index, preset)
+│   └── routers/          # HTTP 엔드포인트 (projects, documents, config, presets)
 ├── frontend/             # React SPA (:5173)
 │   └── src/
 │       ├── api/client.ts # fetch 래퍼 + TS 인터페이스 (backend 스키마 수동 미러)
@@ -40,6 +41,7 @@ agentloop/
 | 상태 관리 | TanStack Query (서버) + localStorage (UI) | Redux/Zustand 없음 |
 | docs_root 설정 | `backend/config.py` + `backend/config.yaml` | 런타임 변경 가능 |
 | index.md 파싱 로직 | `backend/services/index_service.py` | 정규식 기반, 포맷 변경 시 주의 |
+| CLAUDE.md 프리셋 관리 | `backend/services/preset_service.py` + `backend/presets/*.json` | JSON 파일 기반 CRUD, builtin 보호 |
 | 프로젝트 모드 판별 | `backend/config.py` → `is_single_project_mode()` | 폴더명 패턴 `\d{3}_.+` 기준 |
 | 문서 생성/삭제 | `backend/services/document_service.py` + `frontend/src/components/CreateDocumentModal.tsx`, `DeleteConfirmModal.tsx` | BE: create_document/delete_document, FE: 모달 UI |
 | 파일명 변경 | `backend/services/document_service.py` + `backend/routers/documents.py` + `frontend/src/components/RenameModal.tsx` | BE: rename_document (PATCH), FE: 모달 + hover 연필 버튼 |

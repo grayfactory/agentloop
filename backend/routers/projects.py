@@ -23,7 +23,7 @@ def get_project_detail(name: str):
 @router.post("", response_model=dict)
 def create_project(req: InitProjectRequest):
     try:
-        folder = init_project(req.num, req.title)
+        folder = init_project(req.num, req.title, req.preset_id)
         return {"folder_name": folder, "message": "프로젝트가 생성되었습니다."}
     except FileExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))

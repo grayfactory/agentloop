@@ -35,7 +35,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 │   ├── DocumentEditor     # Textarea + Cmd+S save + Tab 2-space indent + scroll sync props
 │   ├── FeedbackPopover    # Text select → floating feedback UI
 │   └── DiffViewer         # Split-view document comparison
-├── InitProjectModal       # Create project dialog
+├── InitProjectModal       # Create project + preset management (inline view switch)
 ├── CreateDocumentModal    # Create new markdown document
 ├── DeleteConfirmModal     # Confirm document deletion
 ├── RenameModal            # Rename document dialog (auto-select filename, Enter/⌘Enter/Esc)
@@ -53,7 +53,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **Tailwind v4** — Uses `@tailwindcss/vite` plugin (not PostCSS). Import `@tailwindcss/typography` for prose.
 - **No global state** — Server state in TanStack Query; UI state in component state + localStorage
 - **localStorage keys** — `'sidebar-collapsed'`, `'project-order'`, `'skill-templates'`
-- **Flat components dir** — No feature folders. 21 components in single `components/` directory.
+- **Flat components dir** — No feature folders. 21 components in single `components/` directory (PresetManagerModal was merged into InitProjectModal).
 - **API client pattern** — `const res = await fetch(...)` → check `res.ok` → throw Korean error messages
 - **Props pattern** — Inline type annotations in function params, no separate Props interfaces
 

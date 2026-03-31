@@ -1,0 +1,6 @@
+{
+  "id": "minimal",
+  "name": "최소 구성",
+  "description": "프로젝트 개요와 기본 규칙만 포함된 간결한 CLAUDE.md",
+  "content": "# CLAUDE.md — {{folder_name}}\n\n## 프로젝트 개요\n- 프로젝트명: {{project_title}}\n- 폴더: {{folder_name}}\n\n---\n\n## 작업 규칙\n\n**세션 시작 시:**\n1. 이 파일(CLAUDE.md) 읽기\n2. `000_index.md` 읽기 → 현재 문서 현황 파악\n\n**문서 생성 시:**\n1. `000_index.md`에 등록\n\n**작업 완료 시:**\n1. `000_index.md` 작업 로그에 기록\n\n---\n\n## 프로젝트 특이사항\n(프로젝트 진행하며 추가)\n"
+}
