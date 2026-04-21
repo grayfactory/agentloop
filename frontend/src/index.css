@@ -23,3 +23,21 @@ body {
   font-size: 0.875rem;
   font-style: normal;
 }
+
+/* HTML 테이블(rowspan/colspan/중첩) 가독성 — 정부양식 폼 대응 */
+.prose :where(table):not(:where([class~="not-prose"] *)) {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+  border-collapse: collapse;
+}
+
+.prose :where(td, th):not(:where([class~="not-prose"] *)) {
+  border: 1px solid #e5e7eb;
+  vertical-align: top;
+  padding: 0.5rem 0.75rem;
+}
+
+.prose :where(table table):not(:where([class~="not-prose"] *)) {
+  margin: 0;
+}

@@ -1,7 +1,7 @@
-# AgentLoop — PRD v2.0 (DSL Summary)
+# AgentLoop — PRD v2.1 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-03-31
+> 최종 갱신: 2026-04-21
 
 ---
 
@@ -20,7 +20,8 @@
 ├── v1.7: 드래그앤드롭 파일 업로드 + ⌘E 편집/미리보기 토글 단축키
 ├── v1.8: 파일명 변경(rename) 기능 — PATCH API + RenameModal
 ├── v1.9: Tab 2-space 들여쓰기 + 코드블럭 다크 테마 + 미리보기↔편집 스크롤 동기화
-└── v2.0: CLAUDE.md 프리셋 시스템 — 프로젝트 생성 시 템플릿 선택 + 커스텀 프리셋 CRUD
+├── v2.0: CLAUDE.md 프리셋 시스템 — 프로젝트 생성 시 템플릿 선택 + 커스텀 프리셋 CRUD
+└── v2.1: HTML 테이블 렌더링 — raw HTML 지원(rehype-raw), rowspan/colspan/중첩 테이블
 ```
 
 ---
@@ -302,8 +303,9 @@ agentloop/
 │           ├── WorkLog.tsx           # 작업 로그 표시
 │           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 + 스크롤 위치 복원 + ⌘E 단축키 + 스크롤 동기화  # v1.7 UPD / v1.9 UPD
 │           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장, Tab 2-space, scrollSync props)  # v1.3 NEW / v1.9 UPD
-│           ├── MarkdownViewer.tsx    # react-markdown + rehypeSourceLine + 피드백 + 코드블럭 다크 테마
-│           │                        #   + 10초 자동 새로고침               # v1.3 UPD / v1.9 UPD
+│           ├── MarkdownViewer.tsx    # react-markdown + rehypeRaw + rehypeSourceLine + 피드백 + 코드블럭 다크 테마
+│           │                        #   + 10초 자동 새로고침               # v1.3 UPD / v1.9 UPD / v2.1 UPD
+│           │                        #   raw HTML 테이블(rowspan/colspan/중첩) 지원  # v2.1 NEW
 │           ├── FeedbackPopover.tsx   # 텍스트 선택 → 플로팅 버튼 → 지시 입력
 │           ├── DiffViewer.tsx        # 두 문서 Split View 비교
 │           ├── InitProjectModal.tsx  # 프로젝트 생성 + 프리셋 관리 통합 모달  # v2.0 UPD
@@ -391,16 +393,27 @@ agentloop/
 |------|------|------|
 | F23. CLAUDE.md 프리셋 | ✅ | 프로젝트 생성 시 프리셋 선택, 기본 3종(default/minimal/research), JSON 파일 기반 CRUD, builtin 보호, {{folder_name}}/{{project_title}} 템플릿 변수, InitProjectModal 인라인 뷰 전환 |
 
+### Phase 11 (HTML 테이블 렌더링) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F24. raw HTML 테이블 지원 | ✅ | rehype-raw 플러그인 추가로 `<table>`, `rowspan`/`colspan`, 중첩 테이블 렌더링. 정부양식 폼 테이블 가독성 개선 (격자/가로스크롤 CSS). 로컬 전용 환경 전제로 sanitize 미적용. |
+
 ---
 
 ## 9. RUN — 실행 방법
 
 ```bash
-# Backend
-cd backend && uv sync && uv run uvicorn main:app --reload --port 8066
+# 최초 설치
+cd backend && uv sync && cd ..
+npm install && cd frontend && npm install && cd ..
 
-# Frontend
-cd frontend && npm install && npm run dev
+# 개발 모드 (hot reload)
+npm run dev                  # backend(:8066) + frontend(:5173)
+
+# 프로덕션 모드 (최적화 빌드)
+npm run build                # frontend/dist/ 생성
+npm run start                # backend(no --reload) + vite preview(:5173)
 
 # → http://localhost:5173
 ```
@@ -412,7 +425,7 @@ cd frontend && npm install && npm run dev
 ```
 Backend:  fastapi, uvicorn, pyyaml, python-multipart  (dev: httpx)
 Frontend: react 19, react-router-dom 7, @tanstack/react-query 5,
-          react-markdown 10, remark-gfm 4, rehype-highlight 7,
+          react-markdown 10, remark-gfm 4, rehype-highlight 7, rehype-raw 7,
           @dnd-kit/core + sortable + modifiers + utilities,
           react-diff-viewer-continued 4,
           tailwindcss 4, vite 7
@@ -602,4 +615,17 @@ v1.9 → v2.0 주요 변경:
 │       Preset 인터페이스: { id, name, description, builtin, content? }
 ├── main.py: presets router 등록
 └── 컴포넌트 수: 21개 (변경 없음, InitProjectModal 기능 확장)
+
+v2.0 → v2.1 주요 변경:
+├── F24: raw HTML 테이블 렌더링
+│       Frontend 의존성 추가: rehype-raw ^7.x
+│       MarkdownViewer.tsx: rehypePlugins 체인에 rehypeRaw 추가
+│         [rehypeRaw, rehypeHighlight, rehypeSourceLine] — 순서 중요
+│         rehypeRaw가 raw HTML을 HAST 엘리먼트로 변환해야
+│         rehypeSourceLine이 data-source-line 속성을 부여 가능
+│       index.css: .prose table/td/th 스타일 보강
+│         display:block + overflow-x:auto + border + vertical-align:top
+│         정부양식 rowspan/colspan/중첩 테이블 격자 가독성 확보
+│       보안: 로컬 전용 환경이라 rehype-sanitize 미적용
+└── 컴포넌트 수: 21개 (변경 없음, MarkdownViewer 내부 수정 + CSS)
 ```

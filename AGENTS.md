@@ -98,3 +98,4 @@ cd frontend && npm run lint    # ESLint
 - **Tab indent**: DocumentEditor textarea에서 Tab 키 → 2 spaces 삽입. requestAnimationFrame으로 커서 위치 복원.
 - **코드블럭 테마**: highlight.js github-dark.css + Tailwind prose-pre 오버라이드로 다크 배경 적용.
 - **스크롤 동기화**: ⌘E 토글 시 미리보기↔편집기 간 스크롤 위치 동기화. scrollSync.ts 유틸 + rehypeSourceLine의 data-source-line 속성 활용.
+- **raw HTML 테이블**: MarkdownViewer에 rehype-raw 적용. 마크다운 내 `<table>`/`rowspan`/`colspan`/중첩 테이블 렌더링 지원 (정부양식 폼 대응). 로컬 전용 환경 전제라 sanitize 미적용. 플러그인 순서 `[rehypeRaw, rehypeHighlight, rehypeSourceLine]` 유지 필수.

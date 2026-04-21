@@ -31,6 +31,7 @@
 | 9 | 코드블럭 다크 테마 | github-dark 테마로 코드블럭 배경/텍스트 가독성 개선 |
 | 9 | 스크롤 동기화 | ⌘E 토글 시 미리보기↔편집기 간 보던 위치 유지, data-source-line 기반 |
 | 10 | CLAUDE.md 프리셋 | 프로젝트 생성 시 프리셋 선택 (기본 3종), 커스텀 프리셋 CRUD, JSON 파일 기반 |
+| 11 | HTML 테이블 렌더링 | raw HTML `<table>` 지원 (rowspan/colspan/중첩), 정부양식 폼 격자 스타일 |
 
 ## 기술 스택
 
@@ -40,7 +41,7 @@
 | Frontend | React 19 + TypeScript + Vite 7 |
 | 스타일링 | Tailwind CSS v4 + @tailwindcss/typography |
 | 상태관리 | TanStack Query 5, React Router v7 |
-| MD 렌더링 | react-markdown + remark-gfm + rehype-highlight |
+| MD 렌더링 | react-markdown + remark-gfm + rehype-highlight + rehype-raw |
 | DnD | @dnd-kit/core + sortable |
 | Diff | react-diff-viewer-continued |
 
@@ -116,22 +117,36 @@ agentloop/
 - Node.js 18+
 - [uv](https://docs.astral.sh/uv/)
 
-### 실행 (루트에서)
+### 최초 설치
 
 ```bash
-cd backend && uv sync && cd ..   # 최초 1회
-npm install                       # 최초 1회
-npm run dev                       # backend + frontend 동시 실행
+cd backend && uv sync && cd ..   # Python 의존성
+npm install                       # 루트 concurrently
+cd frontend && npm install && cd ..  # Frontend 의존성
+```
+
+### 개발 모드 (hot reload)
+
+```bash
+npm run dev                       # backend(:8066) + frontend(:5173) 동시 실행
+npm run dev:backend               # backend만 (uvicorn --reload)
+npm run dev:frontend              # frontend만 (vite dev)
 ```
 
 → http://localhost:5173 접속
 
-### 개별 실행
+### 프로덕션 모드 (최적화 빌드)
 
 ```bash
-npm run dev:backend    # backend만 (:8066)
-npm run dev:frontend   # frontend만 (:5173)
+npm run build                     # frontend 빌드 → frontend/dist/
+npm run start                     # backend(:8066) + vite preview(:5173) 동시 실행
+npm run start:backend             # backend만 (uvicorn, --reload 없음)
+npm run start:frontend            # frontend만 (vite preview, 빌드된 번들 서빙)
 ```
+
+- `vite preview`는 번들링된 정적 파일을 서빙하며 dev 서버와 동일한 `/api` → `:8066` 프록시가 적용됩니다.
+- 백엔드는 `--reload` 옵션 없이 실행되므로 코드 변경 시 자동 재시작되지 않습니다.
+- 로컬 전용 도구이므로 포트/호스트는 기본값 유지를 권장합니다.
 
 ## 설정
 

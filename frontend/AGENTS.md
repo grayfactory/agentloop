@@ -13,7 +13,7 @@ React 19 + TypeScript 5.9 + Vite 7 SPA. Single-page 3-column master-detail works
 | Add hook | `src/hooks/` | localStorage-backed custom hooks |
 | Change layout | `src/pages/WorkspacePage.tsx` | 3-column orchestrator: ProjectSidebar + DocumentPanel + ViewerPanel |
 | Change routing/state | `src/pages/WorkspacePage.tsx` | URL searchParams (`?project=X&doc=Y`), no React Router routes |
-| Change markdown render | `src/components/MarkdownViewer.tsx` + `src/plugins/rehypeSourceLine.ts` | react-markdown + remark-gfm + rehype-highlight |
+| Change markdown render | `src/components/MarkdownViewer.tsx` + `src/plugins/rehypeSourceLine.ts` | react-markdown + remark-gfm + rehype-raw + rehype-highlight. rehypeRaw가 먼저 실행되어야 raw HTML이 HAST로 변환되고 rehypeSourceLine이 data-source-line 부여 가능. |
 | Change styling | Inline Tailwind classes | No CSS modules, no styled-components |
 | Change data fetching | Component using `useQuery()` | TanStack Query 5; refetchInterval: 30s (projects), 10s (detail) |
 
@@ -31,7 +31,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 │   ├── SkillTemplateSelector
 │   └── WorkLog            # Work log entries
 ├── ViewerPanel            # Right column (flex-1) + clipboard copy + scroll restore + ⌘E toggle + scroll sync
-│   ├── MarkdownViewer     # Markdown render + source line annotations + dark code theme
+│   ├── MarkdownViewer     # Markdown render + raw HTML passthrough + source line annotations + dark code theme
 │   ├── DocumentEditor     # Textarea + Cmd+S save + Tab 2-space indent + scroll sync props
 │   ├── FeedbackPopover    # Text select → floating feedback UI
 │   └── DiffViewer         # Split-view document comparison
@@ -74,6 +74,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 | react-router-dom | 7.x | URL searchParams sync only (no routes) |
 | react-markdown | 10.x | Markdown rendering |
 | remark-gfm + rehype-highlight | latest | GFM tables + code highlighting |
+| rehype-raw | 7.x | Raw HTML passthrough (rowspan/colspan/중첩 테이블, 정부양식 폼) |
 | @dnd-kit | latest | Drag-and-drop project reordering |
 | react-diff-viewer-continued | 4.x | Split-view document comparison |
 | tailwindcss | 4.x | Utility-first CSS (via Vite plugin) |
@@ -91,3 +92,4 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **스크롤 동기화** — ⌘E 토글 시 미리보기↔편집기 간 스크롤 위치 동기화. utils/scrollSync.ts의 4개 함수(findFirstVisibleSourceLine, scrollTextareaToLine, getLineFromCursor, scrollPreviewToSourceLine) + ViewerPanel의 syncLineRef/editorCursorLineRef + DocumentEditor의 initialLine/cursorLineRef props. rehypeSourceLine 플러그인의 data-source-line 속성이 핵심 인프라.
 - **코드블럭 테마** — highlight.js github-dark.css 사용. MarkdownViewer에 prose-pre Tailwind 오버라이드 적용 (bg-[#0d1117], border-gray-700, text-gray-200).
 - **Tab indent** — DocumentEditor textarea onKeyDown에서 Tab 키 인터셉트 → 2 spaces 삽입. requestAnimationFrame으로 커서 위치 복원.
+- **raw HTML 렌더링** — MarkdownViewer는 rehype-raw로 `<table>`, `rowspan`/`colspan`, 중첩 테이블 등 raw HTML을 지원한다. 정부양식 폼 문서를 위한 기능. 로컬 전용 환경이라 rehype-sanitize 미적용 — 외부 문서 입력 허용 시 재검토 필요. rehypePlugins 순서 `[rehypeRaw, rehypeHighlight, rehypeSourceLine]` 유지 필수 (rehypeRaw가 먼저 HAST로 변환해야 후속 플러그인이 element 노드로 인식).
