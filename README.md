@@ -32,6 +32,7 @@
 | 9 | 스크롤 동기화 | ⌘E 토글 시 미리보기↔편집기 간 보던 위치 유지, data-source-line 기반 |
 | 10 | CLAUDE.md 프리셋 | 프로젝트 생성 시 프리셋 선택 (기본 3종), 커스텀 프리셋 CRUD, JSON 파일 기반 |
 | 11 | HTML 테이블 렌더링 | raw HTML `<table>` 지원 (rowspan/colspan/중첩), 정부양식 폼 격자 스타일 |
+| 12 | 비-텍스트 미리보기 | 이미지(PNG/JPG/SVG 등) + HTML 파일 뷰어, FileResponse + iframe sandbox |
 
 ## 기술 스택
 
@@ -94,6 +95,8 @@ agentloop/
 │           ├── ViewerPanel.tsx
 │           ├── MarkdownViewer.tsx
 │           ├── DocumentEditor.tsx
+│           ├── ImageViewer.tsx
+│           ├── HtmlViewer.tsx
 │           ├── FeedbackPopover.tsx
 │           ├── DiffViewer.tsx
 │           ├── ContextBuilder.tsx
@@ -171,7 +174,7 @@ docs_root: "/path/to/docs"
 | GET | `/api/projects/{name}` | 프로젝트 상세 (orphan, has_index 포함) |
 | GET | `/api/projects/{name}/documents` | 문서 목록 |
 | POST | `/api/projects/{name}/documents` | 문서 생성 |
-| GET | `/api/projects/{name}/documents/{filename}` | 문서 내용 (raw md) |
+| GET | `/api/projects/{name}/documents/{filename}` | 파일 내용 (mimetype 자동 — md/이미지/HTML 모두 지원) |
 | PUT | `/api/projects/{name}/documents/{filename}` | 문서 내용 수정 |
 | PATCH | `/api/projects/{name}/documents/{filename}` | 파일명 변경 |
 | DELETE | `/api/projects/{name}/documents/{filename}` | 문서 삭제 |

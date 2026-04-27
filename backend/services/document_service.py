@@ -14,13 +14,6 @@ def list_documents(project_name: str) -> list[Document]:
     return documents
 
 
-def get_document_content(project_name: str, filename: str) -> str:
-    file_path = resolve_project_dir(project_name) / filename
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {filename}")
-    return file_path.read_text(encoding="utf-8")
-
-
 def get_worklogs(project_name: str) -> list[WorkLog]:
     index_path = resolve_project_dir(project_name) / "000_index.md"
     _, worklogs = parse_index(index_path)

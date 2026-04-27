@@ -1,7 +1,7 @@
-# AgentLoop — PRD v2.1 (DSL Summary)
+# AgentLoop — PRD v2.2 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-04-21
+> 최종 갱신: 2026-04-27
 
 ---
 
@@ -21,7 +21,8 @@
 ├── v1.8: 파일명 변경(rename) 기능 — PATCH API + RenameModal
 ├── v1.9: Tab 2-space 들여쓰기 + 코드블럭 다크 테마 + 미리보기↔편집 스크롤 동기화
 ├── v2.0: CLAUDE.md 프리셋 시스템 — 프로젝트 생성 시 템플릿 선택 + 커스텀 프리셋 CRUD
-└── v2.1: HTML 테이블 렌더링 — raw HTML 지원(rehype-raw), rowspan/colspan/중첩 테이블
+├── v2.1: HTML 테이블 렌더링 — raw HTML 지원(rehype-raw), rowspan/colspan/중첩 테이블
+└── v2.2: 비-텍스트 미리보기 — 이미지(PNG/JPG/SVG 등)/HTML 파일 뷰어, FileResponse + iframe
 ```
 
 ---
@@ -116,7 +117,8 @@ GET    /api/projects/{name}/documents             → Document[]
 POST   /api/projects/{name}/documents             → { filename, status }       # v1.3 NEW
        ← { filename, content }
        # 프로젝트 디렉토리에 새 문서 파일 생성 (orphan으로 표시)
-GET    /api/projects/{name}/documents/{filename}  → raw markdown (text/plain)
+GET    /api/projects/{name}/documents/{filename}  → FileResponse (mimetype 자동 추론)  # v2.2 UPD
+       # text/markdown, image/png, text/html 등 — 바이너리/텍스트 모두 지원
 PUT    /api/projects/{name}/documents/{filename}  → { status }                 # v1.3 NEW
        ← { content }
        # 기존 문서 내용 덮어쓰기 (브라우저 편집 모드)
@@ -301,8 +303,10 @@ agentloop/
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
 │           ├── WorkLog.tsx           # 작업 로그 표시
-│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 클립보드 복사 + 스크롤 위치 복원 + ⌘E 단축키 + 스크롤 동기화  # v1.7 UPD / v1.9 UPD
+│           ├── ViewerPanel.tsx       # RIGHT: 뷰어 ↔ 편집 ↔ Diff 전환 + 파일 종류별 분기 + 클립보드 복사 + 스크롤 위치 복원 + ⌘E 단축키 + 스크롤 동기화  # v1.7 UPD / v1.9 UPD / v2.2 UPD
 │           ├── DocumentEditor.tsx    # 문서 편집기 (textarea, ⌘S 저장, Tab 2-space, scrollSync props)  # v1.3 NEW / v1.9 UPD
+│           ├── ImageViewer.tsx       # 이미지 파일 뷰어 (<img>, cacheBust 쿼리)  # v2.2 NEW
+│           ├── HtmlViewer.tsx        # HTML 파일 뷰어 (<iframe sandbox>, cacheBust 쿼리)  # v2.2 NEW
 │           ├── MarkdownViewer.tsx    # react-markdown + rehypeRaw + rehypeSourceLine + 피드백 + 코드블럭 다크 테마
 │           │                        #   + 10초 자동 새로고침               # v1.3 UPD / v1.9 UPD / v2.1 UPD
 │           │                        #   raw HTML 테이블(rowspan/colspan/중첩) 지원  # v2.1 NEW
@@ -398,6 +402,12 @@ agentloop/
 | 기능 | 상태 | 비고 |
 |------|------|------|
 | F24. raw HTML 테이블 지원 | ✅ | rehype-raw 플러그인 추가로 `<table>`, `rowspan`/`colspan`, 중첩 테이블 렌더링. 정부양식 폼 테이블 가독성 개선 (격자/가로스크롤 CSS). 로컬 전용 환경 전제로 sanitize 미적용. |
+
+### Phase 12 (비-텍스트 미리보기) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F25. 이미지/HTML 파일 미리보기 | ✅ | Backend GET `/documents/{filename}` 응답을 `FileResponse`로 변경 — mimetype 자동 추론(image/png, text/html, text/markdown). Frontend ViewerPanel에서 확장자 분기 (`classifyFile()` → text/image/html). `ImageViewer`(`<img>`) + `HtmlViewer`(`<iframe sandbox="allow-scripts allow-popups allow-forms">`) 신규. 비-텍스트 파일에서는 편집/복사 버튼·⌘E 단축키 비활성. `OrphanFile.last_modified` 기반 cacheBust 쿼리로 덮어쓰기 시 캐시 무효화. 이미지 확장자 화이트리스트: png, jpg, jpeg, gif, webp, svg, bmp, ico. |
 
 ---
 
@@ -628,4 +638,29 @@ v2.0 → v2.1 주요 변경:
 │         정부양식 rowspan/colspan/중첩 테이블 격자 가독성 확보
 │       보안: 로컬 전용 환경이라 rehype-sanitize 미적용
 └── 컴포넌트 수: 21개 (변경 없음, MarkdownViewer 내부 수정 + CSS)
+
+v2.1 → v2.2 주요 변경:
+├── F25: 비-텍스트 파일 미리보기 (이미지 + HTML)
+│       Backend routers/documents.py: GET `/documents/{filename}` 응답을
+│         PlainTextResponse → FileResponse 로 교체
+│         mimetypes 자동 추론으로 text/markdown, image/png, text/html 등 모두 처리
+│         경로 조작 검사("/", "\\", "..")를 라우터 진입부에서 수행
+│         services/document_service.py::get_document_content 데드 코드 제거
+│         (insert_feedback은 file_path.read_text를 직접 호출)
+│       Frontend 신규 컴포넌트 2개:
+│         ImageViewer.tsx — `<img src={api_url}>` + cacheBust 쿼리
+│         HtmlViewer.tsx — `<iframe src={api_url} sandbox="allow-scripts allow-popups allow-forms">`
+│         iframe sandbox는 same-origin 차단 (Plotly/D3 등 인라인 JS는 정상 동작)
+│       ViewerPanel.tsx 분기 추가:
+│         classifyFile(filename) → 'text' | 'image' | 'html'
+│         IMAGE_EXTS = {png, jpg, jpeg, gif, webp, svg, bmp, ico}
+│         비-텍스트(`kind !== 'text'`): 편집/복사 버튼 hide, ⌘E 비활성
+│         스크롤 위치 복원/동기화 effect는 isTextKind 가드로 보호
+│       캐시 무효화:
+│         queryClient.getQueryData(['project', projectName])에서 orphan_files 조회
+│         일치 파일의 last_modified를 cacheBust prop으로 전달
+│         업로드 시 동일 파일명 덮어쓰기 시나리오에서 브라우저 캐시 무효화
+│       보안: iframe sandbox로 텍스트 파일과 동일한 격리 수준
+│         (rehype-raw "sanitize 미적용" 정책과 일관 — 로컬 전용 도구 전제)
+└── 컴포넌트 수: 21 → 23 (ImageViewer, HtmlViewer 추가)
 ```

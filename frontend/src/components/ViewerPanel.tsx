@@ -1,14 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { findFirstVisibleSourceLine, scrollPreviewToSourceLine } from '../utils/scrollSync';
+import type { ProjectDetail } from '../api/client';
 import MarkdownViewer from './MarkdownViewer';
 import DiffViewer from './DiffViewer';
 import DocumentEditor from './DocumentEditor';
+import ImageViewer from './ImageViewer';
+import HtmlViewer from './HtmlViewer';
 
 interface Props {
   projectName: string | null;
   filename: string | null;
   compareFilename: string | null;
+}
+
+type FileKind = 'text' | 'image' | 'html';
+
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']);
+
+function classifyFile(filename: string): FileKind {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  if (IMAGE_EXTS.has(ext)) return 'image';
+  if (ext === 'html' || ext === 'htm') return 'html';
+  return 'text';
 }
 
 export default function ViewerPanel({ projectName, filename, compareFilename }: Props) {
@@ -19,6 +33,9 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
   const scrollPositionsRef = useRef(new Map<string, number>());
   const syncLineRef = useRef<number | null>(null);
   const editorCursorLineRef = useRef(1);
+
+  const kind: FileKind = filename ? classifyFile(filename) : 'text';
+  const isTextKind = kind === 'text';
 
   useEffect(() => {
     setIsEditing(false);
@@ -51,7 +68,7 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
   }, [isEditing]);
 
   useEffect(() => {
-    if (!projectName || !filename || isEditing) return;
+    if (!projectName || !filename || isEditing || !isTextKind) return;
     const el = scrollContainerRef.current;
     if (!el) return;
 
@@ -69,10 +86,10 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
         el.scrollTop = saved ?? 0;
       });
     }
-  }, [projectName, filename, isEditing]);
+  }, [projectName, filename, isEditing, isTextKind]);
 
   useEffect(() => {
-    if (!projectName || !filename || compareFilename) return;
+    if (!projectName || !filename || compareFilename || !isTextKind) return;
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
         e.preventDefault();
@@ -81,7 +98,7 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [projectName, filename, compareFilename, handleToggleEditing]);
+  }, [projectName, filename, compareFilename, isTextKind, handleToggleEditing]);
 
   if (!projectName || !filename) {
     return (
@@ -103,12 +120,16 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
     );
   }
 
+  const projectDetail = queryClient.getQueryData<ProjectDetail>(['project', projectName]);
+  const orphan = projectDetail?.orphan_files.find((f) => f.filename === filename);
+  const cacheBust = orphan?.last_modified;
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-100 shrink-0">
         <span className="text-xs text-gray-500 font-medium truncate">{filename}</span>
         <div className="flex items-center gap-1.5">
-          {!isEditing && (
+          {isTextKind && !isEditing && (
             <button
               onClick={handleCopy}
               className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
@@ -120,22 +141,28 @@ export default function ViewerPanel({ projectName, filename, compareFilename }: 
               {copied ? '복사됨!' : '복사'}
             </button>
           )}
-          <button
-            onClick={handleToggleEditing}
-            className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-              isEditing
-                ? 'bg-indigo-100 text-indigo-700'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-            title="⌘E"
-          >
-            {isEditing ? '미리보기' : '편집'}
-            <span className="ml-1 text-gray-400 text-[10px]">⌘E</span>
-          </button>
+          {isTextKind && (
+            <button
+              onClick={handleToggleEditing}
+              className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                isEditing
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+              title="⌘E"
+            >
+              {isEditing ? '미리보기' : '편집'}
+              <span className="ml-1 text-gray-400 text-[10px]">⌘E</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {isEditing ? (
+      {kind === 'image' ? (
+        <ImageViewer projectName={projectName} filename={filename} cacheBust={cacheBust} />
+      ) : kind === 'html' ? (
+        <HtmlViewer projectName={projectName} filename={filename} cacheBust={cacheBust} />
+      ) : isEditing ? (
         <DocumentEditor
           projectName={projectName}
           filename={filename}

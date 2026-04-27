@@ -34,7 +34,7 @@ Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 - **프로젝트 감지**: 폴더명 `^\d{3}_.+$` 패턴 매칭 (`_PROJECT_PATTERN`). 매칭 폴더 없으면 single-project 모드.
 - **에러 처리**: 서비스에서 `FileNotFoundError`/`ValueError`/`FileExistsError` raise → 라우터에서 `HTTPException` 변환.
 - **Type Hints**: Python 3.13+ 문법 (`Path | None`, `list[Document]`). `from __future__` 불필요.
-- **응답 포맷**: 문서 내용은 `PlainTextResponse` (raw markdown), 나머지는 JSON.
+- **응답 포맷**: 문서 내용 GET은 `FileResponse` (mimetype 자동 추론 — text/markdown, image/png, text/html 등), 나머지는 JSON.
 - **한국어 메시지**: 에러 메시지, 카테고리명 모두 한국어.
 
 ## ANTI-PATTERNS
@@ -49,3 +49,4 @@ Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 - **dev 의존성**: httpx (수동 API 테스트용)
 - **`__init__.py` 전부 빈 파일**: 패키지 마커 역할만
 - **CORS**: localhost:5173 + :5174만 허용
+- **FileResponse 패턴**: `routers/documents.py::get_document`가 `FileResponse(file_path)`로 응답하면 `mimetypes.guess_type()`이 자동으로 Content-Type을 결정. 바이너리(PNG/JPG)와 텍스트(MD/HTML) 모두 한 엔드포인트로 처리. 라우터 진입부에서 경로 조작(`/`, `\\`, `..`) 검사 필수 — `resolve_project_dir(name) / filename` 직전에 가드.

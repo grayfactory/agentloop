@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse
+from config import resolve_project_dir
 from models.schemas import (
     CreateDocumentRequest,
     Document,
@@ -13,7 +14,6 @@ from models.schemas import (
 from services.document_service import (
     create_document,
     delete_document,
-    get_document_content,
     get_worklogs,
     insert_feedback,
     list_documents,
@@ -30,12 +30,14 @@ def get_documents(name: str):
     return list_documents(name)
 
 
-@router.get("/documents/{filename}", response_class=PlainTextResponse)
+@router.get("/documents/{filename}")
 def get_document(name: str, filename: str):
-    try:
-        return get_document_content(name, filename)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail=f"Invalid filename: {filename}")
+    file_path = resolve_project_dir(name) / filename
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+    return FileResponse(file_path)
 
 
 @router.post("/documents/{filename}/feedback")

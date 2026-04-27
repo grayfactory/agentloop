@@ -48,6 +48,7 @@ agentloop/
 | 파일 업로드 (DnD) | `backend/services/document_service.py` + `backend/routers/documents.py` + `frontend/src/components/DocumentPanel.tsx` | BE: upload_file (write_bytes), FE: HTML5 드래그앤드롭 |
 | 프로젝트 삭제 | `backend/services/project_service.py` + `frontend/src/components/DeleteProjectModal.tsx` | BE: delete_project (shutil.rmtree), FE: 확인 모달 + 사이드바 버튼 |
 | 스크롤 동기화 | `frontend/src/utils/scrollSync.ts` + `frontend/src/components/ViewerPanel.tsx` + `DocumentEditor.tsx` | data-source-line 기반 미리보기↔편집 위치 동기화 |
+| 비-텍스트 파일 미리보기 | `backend/routers/documents.py` (FileResponse) + `frontend/src/components/ViewerPanel.tsx` (`classifyFile`) + `ImageViewer.tsx`, `HtmlViewer.tsx` | 확장자 분기 → `<img>` 또는 `<iframe sandbox>`. cacheBust는 OrphanFile.last_modified 활용 |
 
 ## CONVENTIONS
 
@@ -99,3 +100,4 @@ cd frontend && npm run lint    # ESLint
 - **코드블럭 테마**: highlight.js github-dark.css + Tailwind prose-pre 오버라이드로 다크 배경 적용.
 - **스크롤 동기화**: ⌘E 토글 시 미리보기↔편집기 간 스크롤 위치 동기화. scrollSync.ts 유틸 + rehypeSourceLine의 data-source-line 속성 활용.
 - **raw HTML 테이블**: MarkdownViewer에 rehype-raw 적용. 마크다운 내 `<table>`/`rowspan`/`colspan`/중첩 테이블 렌더링 지원 (정부양식 폼 대응). 로컬 전용 환경 전제라 sanitize 미적용. 플러그인 순서 `[rehypeRaw, rehypeHighlight, rehypeSourceLine]` 유지 필수.
+- **비-텍스트 미리보기**: `documents.py` GET 엔드포인트는 `FileResponse`로 mimetype을 자동 추론 — 텍스트(.md), 이미지(.png/.jpg 등), HTML 모두 한 엔드포인트로 서빙. 프론트엔드 `ViewerPanel.classifyFile()`이 확장자로 분기해 `MarkdownViewer` / `ImageViewer` / `HtmlViewer` 중 하나를 렌더. HTML은 `<iframe sandbox="allow-scripts allow-popups allow-forms">`로 same-origin 차단 (Plotly/D3 등 인라인 JS는 정상 동작). 비-텍스트 파일은 편집/복사 버튼·⌘E 단축키가 비활성화됨. cacheBust는 `projectDetail.orphan_files[*].last_modified`에서 가져옴 — 인덱싱된(non-orphan) 비-텍스트 파일은 cacheBust 없음(브라우저 새로고침으로 대응).

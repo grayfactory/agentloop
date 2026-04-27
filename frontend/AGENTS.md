@@ -30,9 +30,11 @@ App.tsx → WorkspacePage.tsx (sole page)
 │   ├── ContextBuilder     # Checkbox → PROMPT_*.md generation
 │   ├── SkillTemplateSelector
 │   └── WorkLog            # Work log entries
-├── ViewerPanel            # Right column (flex-1) + clipboard copy + scroll restore + ⌘E toggle + scroll sync
+├── ViewerPanel            # Right column (flex-1) + 파일 종류 분기 (text/image/html) + clipboard copy + scroll restore + ⌘E toggle + scroll sync
 │   ├── MarkdownViewer     # Markdown render + raw HTML passthrough + source line annotations + dark code theme
 │   ├── DocumentEditor     # Textarea + Cmd+S save + Tab 2-space indent + scroll sync props
+│   ├── ImageViewer        # `<img>` 기반 이미지 뷰어 (PNG/JPG/GIF/WebP/SVG/BMP/ICO) + cacheBust 쿼리
+│   ├── HtmlViewer         # `<iframe sandbox>` 기반 HTML 뷰어 + cacheBust 쿼리
 │   ├── FeedbackPopover    # Text select → floating feedback UI
 │   └── DiffViewer         # Split-view document comparison
 ├── InitProjectModal       # Create project + preset management (inline view switch)
@@ -53,7 +55,7 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **Tailwind v4** — Uses `@tailwindcss/vite` plugin (not PostCSS). Import `@tailwindcss/typography` for prose.
 - **No global state** — Server state in TanStack Query; UI state in component state + localStorage
 - **localStorage keys** — `'sidebar-collapsed'`, `'project-order'`, `'skill-templates'`
-- **Flat components dir** — No feature folders. 21 components in single `components/` directory (PresetManagerModal was merged into InitProjectModal).
+- **Flat components dir** — No feature folders. 23 components in single `components/` directory (ImageViewer/HtmlViewer added in v2.2; PresetManagerModal was merged into InitProjectModal).
 - **API client pattern** — `const res = await fetch(...)` → check `res.ok` → throw Korean error messages
 - **Props pattern** — Inline type annotations in function params, no separate Props interfaces
 
@@ -93,3 +95,4 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **코드블럭 테마** — highlight.js github-dark.css 사용. MarkdownViewer에 prose-pre Tailwind 오버라이드 적용 (bg-[#0d1117], border-gray-700, text-gray-200).
 - **Tab indent** — DocumentEditor textarea onKeyDown에서 Tab 키 인터셉트 → 2 spaces 삽입. requestAnimationFrame으로 커서 위치 복원.
 - **raw HTML 렌더링** — MarkdownViewer는 rehype-raw로 `<table>`, `rowspan`/`colspan`, 중첩 테이블 등 raw HTML을 지원한다. 정부양식 폼 문서를 위한 기능. 로컬 전용 환경이라 rehype-sanitize 미적용 — 외부 문서 입력 허용 시 재검토 필요. rehypePlugins 순서 `[rehypeRaw, rehypeHighlight, rehypeSourceLine]` 유지 필수 (rehypeRaw가 먼저 HAST로 변환해야 후속 플러그인이 element 노드로 인식).
+- **비-텍스트 파일 미리보기 (v2.2)** — ViewerPanel의 `classifyFile(filename)`이 확장자로 'text' / 'image' / 'html'을 분기. 이미지 확장자: png, jpg, jpeg, gif, webp, svg, bmp, ico. HTML: htm, html. 비-텍스트일 때 헤더의 편집/복사 버튼·⌘E 단축키가 비활성화되고 본문이 ImageViewer 또는 HtmlViewer로 렌더된다. 두 컴포넌트 모두 `/api/projects/{name}/documents/{filename}` URL을 직접 src로 사용 (JS fetch 불필요). HtmlViewer는 `sandbox="allow-scripts allow-popups allow-forms"`로 same-origin을 차단하면서도 Plotly/D3 등 인라인 JS는 정상 동작. cacheBust prop은 `queryClient.getQueryData(['project', projectName])`로 projectDetail의 orphan_files에서 일치 파일의 last_modified를 찾아 전달 — 인덱싱된 비-텍스트 파일은 cacheBust 없음 (브라우저 새로고침으로 대응). ViewerPanel의 스크롤 위치 복원/동기화 effect는 `isTextKind` 가드로 텍스트 파일에서만 동작.
