@@ -86,6 +86,8 @@ App.tsx → WorkspacePage.tsx (sole page)
 - **ViewerPanel scroll** — 자식 뷰(MarkdownViewer, DiffViewer 등)는 반드시 `h-full overflow-y-auto` 래퍼 안에 렌더해야 함. 부모 `<main>`이 `overflow-hidden`이라 래퍼 없으면 콘텐츠 확장 시 스크롤 불가.
 - **No tests** — ESLint + TypeScript strict mode are the only quality checks
 - **Vite proxy** — `/api` → `localhost:8066`; no CORS config needed in dev
+- **Production single-port** — `npm run start` (or `start.sh`/`start.bat`) doesn't run `vite preview`; FastAPI itself serves `frontend/dist/` at `/` plus `/api/*`. Build outputs to `frontend/dist/` exactly; backend's `main.py` SPA fallback expects that path.
+- **DirectoryPickerModal Windows 호환** — breadcrumb은 `BrowseResponse.path_segments`(`Path.parts` 결과)와 `separator`(`os.sep`)를 사용. 직접 `'/'.split()` 하지 말 것. POSIX는 segments[0]=`/`, Windows는 segments[0]=`C:\` 형태. `joinSegments` 헬퍼는 첫 segment가 separator로 끝나는지 확인 후 join.
 - **QueryClient staleTime** — 30s default (set in `main.tsx`)
 - **ESM only** — `"type": "module"` in package.json; `verbatimModuleSyntax` in tsconfig
 - **Build** — `tsc -b && vite build`; TypeScript errors block build

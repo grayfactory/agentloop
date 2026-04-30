@@ -1,7 +1,7 @@
-# AgentLoop — PRD v2.2 (DSL Summary)
+# AgentLoop — PRD v2.3 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-04-27
+> 최종 갱신: 2026-04-30
 
 ---
 
@@ -22,7 +22,8 @@
 ├── v1.9: Tab 2-space 들여쓰기 + 코드블럭 다크 테마 + 미리보기↔편집 스크롤 동기화
 ├── v2.0: CLAUDE.md 프리셋 시스템 — 프로젝트 생성 시 템플릿 선택 + 커스텀 프리셋 CRUD
 ├── v2.1: HTML 테이블 렌더링 — raw HTML 지원(rehype-raw), rowspan/colspan/중첩 테이블
-└── v2.2: 비-텍스트 미리보기 — 이미지(PNG/JPG/SVG 등)/HTML 파일 뷰어, FileResponse + iframe
+├── v2.2: 비-텍스트 미리보기 — 이미지(PNG/JPG/SVG 등)/HTML 파일 뷰어, FileResponse + iframe
+└── v2.3: 크로스플랫폼 배포 — 단일 포트 production(StaticFiles SPA fallback), per-user config(platformdirs), Windows breadcrumb 호환, setup/start 스크립트, 릴리스 ZIP 빌드
 ```
 
 ---
@@ -68,7 +69,7 @@ CreateDocumentRequest { filename, content }                             # v1.3 N
 UpdateDocumentRequest { content }                                       # v1.3 NEW
 UpdateConfigRequest { docs_root }                                       # v1.4 NEW
 DirectoryEntry { name, path }                                           # v1.4 NEW
-BrowseResponse { current_path, parent_path, directories[] }             # v1.4 NEW
+BrowseResponse { current_path, parent_path, directories[], path_segments[], separator }  # v1.4 NEW / v2.3 UPD
 UploadError    { filename, detail }                                      # v1.7 NEW
 UploadResult   { uploaded[], errors[] }                                  # v1.7 NEW
 RenameDocumentRequest { new_filename }                                   # v1.8 NEW
@@ -409,23 +410,44 @@ agentloop/
 |------|------|------|
 | F25. 이미지/HTML 파일 미리보기 | ✅ | Backend GET `/documents/{filename}` 응답을 `FileResponse`로 변경 — mimetype 자동 추론(image/png, text/html, text/markdown). Frontend ViewerPanel에서 확장자 분기 (`classifyFile()` → text/image/html). `ImageViewer`(`<img>`) + `HtmlViewer`(`<iframe sandbox="allow-scripts allow-popups allow-forms">`) 신규. 비-텍스트 파일에서는 편집/복사 버튼·⌘E 단축키 비활성. `OrphanFile.last_modified` 기반 cacheBust 쿼리로 덮어쓰기 시 캐시 무효화. 이미지 확장자 화이트리스트: png, jpg, jpeg, gif, webp, svg, bmp, ico. |
 
+### Phase 13 (크로스플랫폼 배포) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F26. 단일 포트 production | ✅ | `backend/main.py`에 `StaticFiles` 마운트(`/assets`) + SPA fallback catch-all 추가. `frontend/dist/` 존재 시에만 활성(`DIST_DIR.exists()` 가드). `npm run start`가 `vite preview` 없이 uvicorn 한 프로세스로 SPA + `/api/*` 모두 서빙. `concurrently` 의존 제거. |
+| F27. Per-user config | ✅ | `backend/config.py`가 `platformdirs.user_config_dir("AgentLoop")`로 이동. mac=`~/Library/Application Support/AgentLoop/`, Windows=`%APPDATA%\AgentLoop\`, Linux=`~/.config/AgentLoop/`. 기존 `backend/config.yaml`이 있고 user dir에 없으면 1회 자동 복사 (legacy 호환). `platformdirs` deps 추가. |
+| F28. Windows 경로 breadcrumb | ✅ | `BrowseResponse`에 `path_segments`(=`Path.parts`) + `separator`(=`os.sep`) 필드 추가. `DirectoryPickerModal`은 `current_path.split('/')` 대신 segments + separator로 breadcrumb 구성. POSIX `/`/Windows `C:\` 모두 정상 표시. |
+| F29. setup/start 스크립트 | ✅ | repo root `setup.sh/.bat` (uv 자동 설치 + uv sync + frontend 빌드 가드), `start.sh/.bat` (브라우저 자동 오픈 + uvicorn). 비개발자 더블클릭 흐름 지원. |
+| F30. 릴리스 빌드 스크립트 | ✅ | `scripts/build-release.sh <version>` — frontend 빌드 + 정확한 파일만 ZIP 패키징. `backend/config.yaml` 누출 검증 (있으면 빌드 실패). `frontend/src`, `node_modules`, `.venv`, `__pycache__` 모두 제외. `docs/RELEASING.md`에 상세 절차. |
+
 ---
 
 ## 9. RUN — 실행 방법
 
 ```bash
+# A. 일반 사용자 (Windows/mac, ZIP 받은 경우)
+# 사전: Python 3.13+ 설치 (python.org)
+./setup.sh           # mac (또는 Windows: setup.bat 더블클릭)
+./start.sh           # mac (또는 Windows: start.bat 더블클릭)
+# → 브라우저 자동 오픈 http://localhost:8066
+
+# B. 개발자 (git clone)
 # 최초 설치
 cd backend && uv sync && cd ..
 npm install && cd frontend && npm install && cd ..
 
-# 개발 모드 (hot reload)
+# 개발 모드 (hot reload, 두 포트)
 npm run dev                  # backend(:8066) + frontend(:5173)
 
-# 프로덕션 모드 (최적화 빌드)
+# 단일 포트 production (mac 일상 사용)
 npm run build                # frontend/dist/ 생성
-npm run start                # backend(no --reload) + vite preview(:5173)
+npm run start                # uvicorn :8066 — FastAPI가 dist + /api/* 모두 서빙
+npm run prod                 # build + start 한 번에
+# → http://localhost:8066
 
-# → http://localhost:5173
+# 릴리스 빌드 (배포용 ZIP)
+./scripts/build-release.sh v1.0.0
+# → dist/agentloop-v1.0.0.zip
 ```
 
 ---
@@ -433,13 +455,13 @@ npm run start                # backend(no --reload) + vite preview(:5173)
 ## 10. DEPS — 의존성 요약
 
 ```
-Backend:  fastapi, uvicorn, pyyaml, python-multipart  (dev: httpx)
+Backend:  fastapi, uvicorn, pyyaml, python-multipart, platformdirs  (dev: httpx)
 Frontend: react 19, react-router-dom 7, @tanstack/react-query 5,
           react-markdown 10, remark-gfm 4, rehype-highlight 7, rehype-raw 7,
           @dnd-kit/core + sortable + modifiers + utilities,
           react-diff-viewer-continued 4,
           tailwindcss 4, vite 7
-Runtime:  Python 3.13+, Node 18+, uv
+Runtime:  Python 3.13+, Node 18+ (개발자만), uv
 ```
 
 ---
@@ -663,4 +685,39 @@ v2.1 → v2.2 주요 변경:
 │       보안: iframe sandbox로 텍스트 파일과 동일한 격리 수준
 │         (rehype-raw "sanitize 미적용" 정책과 일관 — 로컬 전용 도구 전제)
 └── 컴포넌트 수: 21 → 23 (ImageViewer, HtmlViewer 추가)
+
+v2.2 → v2.3 주요 변경:
+├── F26: 단일 포트 production
+│       backend/main.py: 모든 router include 이후에 StaticFiles 마운트(/assets)
+│         + catch-all `@app.get("/{full_path:path}")` SPA fallback 등록
+│         DIST_DIR.exists() 가드로 dev 모드 호환 (빌드 안 한 상태에서도 backend 단독 실행)
+│       package.json: start 스크립트가 단일 uvicorn으로 변경 (vite preview 제거)
+│       prod = build + start 편의 스크립트 추가
+├── F27: Per-user config 위치
+│       backend/config.py: CONFIG_PATH = platformdirs.user_config_dir("AgentLoop") / "config.yaml"
+│         mac=~/Library/Application Support/AgentLoop/
+│         Windows=%APPDATA%\AgentLoop\
+│         Linux=~/.config/AgentLoop/
+│       Legacy 호환: 기존 backend/config.yaml이 있고 user dir에 없으면 모듈 로드 시 1회 자동 복사
+│       backend/pyproject.toml: dependencies에 platformdirs 추가
+├── F28: Windows 경로 breadcrumb 호환
+│       backend/models/schemas.py: BrowseResponse에 path_segments(list[str]) + separator(str) 추가
+│       backend/routers/config.py: /api/browse 응답이 list(target.parts) + os.sep 채워 반환
+│       frontend/src/api/client.ts: BrowseResponse interface에 path_segments + separator 추가
+│       frontend/src/components/DirectoryPickerModal.tsx: current_path.split('/') 제거
+│         path_segments 직접 순회로 breadcrumb 렌더, joinSegments 헬퍼로 클릭 시 경로 재구성
+│         POSIX `/Users/gray` (segments[0]='/'), Windows `C:\Users\gray` (segments[0]='C:\\') 모두 정상
+├── F29: setup/start 스크립트 (배포 진입점)
+│       repo root: setup.sh, setup.bat, start.sh, start.bat 신규
+│       setup: uv 자동 설치 (curl/PowerShell), uv sync, frontend/dist 없고 Node 있으면 빌드, 없으면 안내 메시지
+│       start: 브라우저 자동 오픈 (open/xdg-open/start) + uvicorn 포어그라운드 실행
+│       Windows의 setup.bat은 Python 미설치 시 친절히 안내 후 종료
+├── F30: 릴리스 빌드 스크립트
+│       scripts/build-release.sh <version>: frontend 빌드 → 스테이징 디렉토리 구성 → ZIP 압축
+│       포함: backend/{main,config,pyproject,uv.lock,models,services,routers,presets},
+│              frontend/dist, package.json, setup/start 스크립트, README.md, docs/RELEASING.md
+│       제외: backend/config.yaml(누출 검증), node_modules, .venv, .git,
+│              frontend/src, __pycache__, *.pyc, .DS_Store
+│       docs/RELEASING.md (신규): 빌드/검증/Windows VM 검증 절차 문서
+└── 컴포넌트 수: 23개 (변경 없음, DirectoryPickerModal 내부 수정만)
 ```

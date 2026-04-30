@@ -39,7 +39,7 @@ agentloop/
 | API 타입 추가 (FE) | `frontend/src/api/client.ts` | BE 스키마 수동 미러 — 동기화 주의 |
 | UI 컴포넌트 추가 | `frontend/src/components/` | flat 구조, default export |
 | 상태 관리 | TanStack Query (서버) + localStorage (UI) | Redux/Zustand 없음 |
-| docs_root 설정 | `backend/config.py` + `backend/config.yaml` | 런타임 변경 가능 |
+| docs_root 설정 | `backend/config.py` + `<user_config_dir>/AgentLoop/config.yaml` | 런타임 변경 가능. mac: `~/Library/Application Support/AgentLoop/`, Windows: `%APPDATA%\AgentLoop\`, Linux: `~/.config/AgentLoop/` |
 | index.md 파싱 로직 | `backend/services/index_service.py` | 정규식 기반, 포맷 변경 시 주의 |
 | CLAUDE.md 프리셋 관리 | `backend/services/preset_service.py` + `backend/presets/*.json` | JSON 파일 기반 CRUD, builtin 보호 |
 | 프로젝트 모드 판별 | `backend/config.py` → `is_single_project_mode()` | 폴더명 패턴 `\d{3}_.+` 기준 |
@@ -73,18 +73,28 @@ agentloop/
 
 ```bash
 # 개발 (루트에서)
-npm run dev                    # backend + frontend 동시 실행
-npm run dev:backend            # backend만 (:8066)
+npm run dev                    # backend + frontend 동시 실행 (Vite :5173 + uvicorn :8066, hot reload)
+npm run dev:backend            # backend만 (:8066, --reload)
 npm run dev:frontend           # frontend만 (:5173)
 
-# 설치 (최초 1회)
+# 설치 (최초 1회 / 개발자)
 cd backend && uv sync && cd .. # Python 의존성
 npm install                    # 루트 concurrently
 cd frontend && npm install     # Frontend 의존성
 
-# 빌드/린트
-cd frontend && npm run build   # tsc + vite build
-cd frontend && npm run lint    # ESLint
+# 단일 프로세스 production (mac 일상 사용)
+npm run build                  # frontend/dist/ 생성 (tsc + vite build)
+npm run start                  # uvicorn :8066 — FastAPI가 frontend/dist 서빙 + /api/* 처리
+npm run prod                   # build + start 한 번에
+
+# End-user 셋업 (Windows/mac)
+./setup.sh                     # mac/Linux: uv 자동 설치 + uv sync + (필요 시) frontend 빌드
+setup.bat                      # Windows: 동일, 단 Python 사전 설치 필요
+./start.sh                     # mac/Linux: 브라우저 자동 오픈 + uvicorn 실행
+start.bat                      # Windows: 동일
+
+# 릴리스
+./scripts/build-release.sh v1.0.0   # dist/agentloop-v1.0.0.zip 생성 (frontend/dist 포함, config.yaml 제외)
 ```
 
 ## NOTES
@@ -93,7 +103,9 @@ cd frontend && npm run lint    # ESLint
 - **테스트 없음**: 자동 테스트 프레임워크 미설정. 수동 테스트 의존.
 - **CI/CD 없음**: `.github/workflows/` 없음.
 - **Vite 프록시**: 개발 시 `/api` → `localhost:8066` 자동 프록시.
-- **config.yaml gitignore됨**: `backend/config.yaml`은 런타임 생성, git 추적 안 함.
+- **단일 프로세스 production**: `npm run start` (또는 `start.sh`/`start.bat`)는 `uvicorn :8066` 한 프로세스만 실행. `frontend/dist/`가 존재하면 `main.py`의 SPA fallback 라우트가 `/`에서 정적 파일을 서빙하고 `/api/*` 라우터가 그 외 경로를 처리. dev 모드에서는 dist가 없어도 backend 단독 실행 가능 (가드).
+- **config 위치 (per-user)**: `platformdirs.user_config_dir("AgentLoop")` — mac: `~/Library/Application Support/AgentLoop/config.yaml`, Windows: `%APPDATA%\AgentLoop\config.yaml`, Linux: `~/.config/AgentLoop/config.yaml`. legacy 호환: 기존 `backend/config.yaml`이 있고 user dir에 config.yaml이 없으면 1회 자동 복사.
+- **릴리스 ZIP 안전장치**: `scripts/build-release.sh`는 빌드 직후 스테이징 디렉토리에 `backend/config.yaml`이 있으면 빌드 실패. 사용자 path 누출 방지.
 - **에러 바운더리 없음**: React Error Boundary 미구현. 에러 시 앱 전체 크래시 가능.
 - **QueryClient**: `staleTime: 30_000`. 프로젝트 목록 30초, 프로젝트 상세 10초 자동 갱신.
 - **Tab indent**: DocumentEditor textarea에서 Tab 키 → 2 spaces 삽입. requestAnimationFrame으로 커서 위치 복원.

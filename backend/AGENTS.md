@@ -10,9 +10,9 @@ FastAPI 백엔드. 파일시스템 기반 문서 CRUD + index.md 정규식 파�
 Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 ```
 
-- `main.py`: FastAPI 앱 생성, CORS 설정 (localhost:5173, :5174), 라우터 4개 등록
-- `config.py`: `docs_root` 관리. 런타임 메모리(`_runtime_docs_root`) + `config.yaml` 이중 저장
-- `models/schemas.py`: 모든 Pydantic 모델 단일 파일. Request/Response 모델 포함
+- `main.py`: FastAPI 앱 생성, CORS 설정 (localhost:5173, :5174), 라우터 4개 등록 + `frontend/dist/` SPA 정적 서빙 (단일 포트 production)
+- `config.py`: `docs_root` 관리. 런타임 메모리(`_runtime_docs_root`) + `config.yaml` 이중 저장. `config.yaml`은 사용자별 디렉토리 (`platformdirs.user_config_dir("AgentLoop")`)
+- `models/schemas.py`: 모든 Pydantic 모델 단일 파일. Request/Response 모델 포함 (`BrowseResponse`에 `path_segments` + `separator` — Windows 경로 호환)
 
 ## WHERE TO LOOK
 
@@ -45,8 +45,11 @@ Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 
 ## NOTES
 
-- **의존성 최소**: fastapi, uvicorn, pyyaml, python-multipart (4개)
+- **의존성 최소**: fastapi, uvicorn, pyyaml, python-multipart, platformdirs (5개)
 - **dev 의존성**: httpx (수동 API 테스트용)
 - **`__init__.py` 전부 빈 파일**: 패키지 마커 역할만
 - **CORS**: localhost:5173 + :5174만 허용
 - **FileResponse 패턴**: `routers/documents.py::get_document`가 `FileResponse(file_path)`로 응답하면 `mimetypes.guess_type()`이 자동으로 Content-Type을 결정. 바이너리(PNG/JPG)와 텍스트(MD/HTML) 모두 한 엔드포인트로 처리. 라우터 진입부에서 경로 조작(`/`, `\\`, `..`) 검사 필수 — `resolve_project_dir(name) / filename` 직전에 가드.
+- **SPA 정적 서빙 (main.py)**: 모든 `include_router(...)` 호출 **이후**에 `app.mount("/assets", StaticFiles(...))` + catch-all `@app.get("/{full_path:path}")` 등록. 순서 바꾸면 catch-all이 `/api/*`를 가로챔. `DIST_DIR.exists()` 가드로 dev 모드(빌드 미진행)에도 backend 단독 실행 가능. catch-all은 `api/`로 시작하는 path는 404로 거절.
+- **Per-user config**: `config.py`는 `platformdirs.user_config_dir("AgentLoop")`을 사용. mac=`~/Library/Application Support/AgentLoop/`, Windows=`%APPDATA%\AgentLoop\`, Linux=`~/.config/AgentLoop/`. legacy 호환: 같은 디렉토리의 `backend/config.yaml`이 있고 user dir에 config.yaml이 없으면 모듈 로드 시 1회 자동 복사.
+- **`/api/browse` Windows 호환**: `BrowseResponse.path_segments`(`Path.parts` 결과 그대로) + `separator`(`os.sep`) 제공 — 프론트엔드는 직접 split 하지 않고 이 필드들로 breadcrumb 구성. POSIX `/Users/gray` → `('/', 'Users', 'gray')`, Windows `C:\Users\gray` → `('C:\\', 'Users', 'gray')`.
