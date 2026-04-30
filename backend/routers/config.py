@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
@@ -45,4 +46,6 @@ def browse_directories(path: str = Query(default="")):
         current_path=str(target),
         parent_path=parent_path,
         directories=directories,
+        path_segments=list(target.parts),
+        separator=os.sep,
     )

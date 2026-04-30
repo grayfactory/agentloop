@@ -58,9 +58,13 @@ export default function DirectoryPickerModal({ currentDocsRoot, onClose, onSelec
     }
   }
 
-  const breadcrumbs = browseData
-    ? browseData.current_path.split('/').filter(Boolean)
-    : [];
+  function joinSegments(segments: string[], separator: string): string {
+    if (segments.length === 0) return '';
+    const root = segments[0];
+    const rest = segments.slice(1).join(separator);
+    if (rest === '') return root;
+    return root.endsWith(separator) ? root + rest : root + separator + rest;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -76,25 +80,22 @@ export default function DirectoryPickerModal({ currentDocsRoot, onClose, onSelec
         )}
 
         {/* Breadcrumb */}
-        {browseData && (
+        {browseData && browseData.path_segments.length > 0 && (
           <div className="flex items-center gap-1 text-xs text-gray-500 mb-2 overflow-x-auto whitespace-nowrap">
-            <button
-              onClick={() => loadDirectory('/')}
-              className="hover:text-indigo-600"
-            >
-              /
-            </button>
-            {breadcrumbs.map((seg, i) => {
-              const fullPath = '/' + breadcrumbs.slice(0, i + 1).join('/');
-              const isLast = i === breadcrumbs.length - 1;
+            {browseData.path_segments.map((seg, i) => {
+              const isLast = i === browseData.path_segments.length - 1;
+              const targetPath = joinSegments(
+                browseData.path_segments.slice(0, i + 1),
+                browseData.separator,
+              );
               return (
-                <span key={fullPath} className="flex items-center gap-1">
-                  <span className="text-gray-300">/</span>
+                <span key={targetPath} className="flex items-center gap-1">
+                  {i > 0 && <span className="text-gray-300">{browseData.separator}</span>}
                   {isLast ? (
                     <span className="text-gray-800 font-medium">{seg}</span>
                   ) : (
                     <button
-                      onClick={() => loadDirectory(fullPath)}
+                      onClick={() => loadDirectory(targetPath)}
                       className="hover:text-indigo-600"
                     >
                       {seg}

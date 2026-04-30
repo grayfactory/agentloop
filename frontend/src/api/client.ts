@@ -14,6 +14,8 @@ export interface BrowseResponse {
   current_path: string;
   parent_path: string | null;
   directories: DirectoryEntry[];
+  path_segments: string[];
+  separator: string;
 }
 
 export async function fetchConfig(): Promise<AppConfig> {

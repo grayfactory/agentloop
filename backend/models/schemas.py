@@ -75,6 +75,8 @@ class BrowseResponse(BaseModel):
     current_path: str
     parent_path: str | None
     directories: list[DirectoryEntry]
+    path_segments: list[str]
+    separator: str
 
 
 class RenameDocumentRequest(BaseModel):
