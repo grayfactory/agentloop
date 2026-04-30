@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn",
     "pyyaml",
     "python-multipart",
+    "platformdirs",
 ]
 
 [dependency-groups]

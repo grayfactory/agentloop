@@ -1,8 +1,16 @@
 import re
 from pathlib import Path
 import yaml
+from platformdirs import user_config_dir
 
-CONFIG_PATH = Path(__file__).parent / "config.yaml"
+APP_NAME = "AgentLoop"
+USER_DIR = Path(user_config_dir(APP_NAME, appauthor=False, roaming=False))
+USER_DIR.mkdir(parents=True, exist_ok=True)
+CONFIG_PATH = USER_DIR / "config.yaml"
+
+_LEGACY_PATH = Path(__file__).parent / "config.yaml"
+if _LEGACY_PATH.exists() and not CONFIG_PATH.exists():
+    CONFIG_PATH.write_text(_LEGACY_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
 _runtime_docs_root: Path | None = None
 
