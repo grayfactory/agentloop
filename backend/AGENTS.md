@@ -24,6 +24,7 @@ Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 | 프로젝트 목록/생성/삭제 | `services/project_service.py` | list/get/init/delete_project |
 | 문서 CRUD + 삭제 + 이름변경 | `services/document_service.py` | create/delete/update/upload/rename + orphan 감지 |
 | index.md 파싱 | `services/index_service.py` | 정규식 3개: CATEGORY_HEADER, TABLE_ROW, WORKLOG_ROW |
+| 카테고리 라벨 추출 | `services/categories_service.py` | `extract_categories_from_markdown(text)` — 프리셋 content / 프로젝트 CLAUDE.md 표 행 파싱. 누락 시 `DEFAULT_CATEGORY_NAMES` |
 | 프리셋 CRUD | `services/preset_service.py` + `presets/*.json` | list/get/create/update/delete + render_template |
 | 설정 변경 | `config.py` → `set_docs_root()` | `config.yaml` 자동 저장 |
 
@@ -53,3 +54,4 @@ Router (HTTP) → Service (비즈니스 로직) → Filesystem (pathlib.Path)
 - **SPA 정적 서빙 (main.py)**: 모든 `include_router(...)` 호출 **이후**에 `app.mount("/assets", StaticFiles(...))` + catch-all `@app.get("/{full_path:path}")` 등록. 순서 바꾸면 catch-all이 `/api/*`를 가로챔. `DIST_DIR.exists()` 가드로 dev 모드(빌드 미진행)에도 backend 단독 실행 가능. catch-all은 `api/`로 시작하는 path는 404로 거절.
 - **Per-user config**: `config.py`는 `platformdirs.user_config_dir("AgentLoop")`을 사용. mac=`~/Library/Application Support/AgentLoop/`, Windows=`%APPDATA%\AgentLoop\`, Linux=`~/.config/AgentLoop/`. legacy 호환: 같은 디렉토리의 `backend/config.yaml`이 있고 user dir에 config.yaml이 없으면 모듈 로드 시 1회 자동 복사.
 - **`/api/browse` Windows 호환**: `BrowseResponse.path_segments`(`Path.parts` 결과 그대로) + `separator`(`os.sep`) 제공 — 프론트엔드는 직접 split 하지 않고 이 필드들로 breadcrumb 구성. POSIX `/Users/gray` → `('/', 'Users', 'gray')`, Windows `C:\Users\gray` → `('C:\\', 'Users', 'gray')`.
+- **카테고리 단일 소스**: 0xx~9xx 라벨은 코드 어디에도 직접 하드코딩하지 말 것. `services/categories_service.py`만 라벨을 안다 — `DEFAULT_CATEGORY_NAMES`는 fallback 전용. `init_project()`는 프리셋 `content`에서 표를 파싱해 그 dict로 CLAUDE.md(템플릿 그대로)와 index.md 헤더(루프 렌더)를 둘 다 채움. `get_project()`는 매 요청마다 그 프로젝트의 `CLAUDE.md`를 파싱해 `ProjectDetail.categories`에 채움 → 사용자 편집 즉시 반영. **새 코드에서 `0: "프로젝트 관리"` 같은 dict literal을 만들면 안 됨** (categories_service 임포트 또는 ProjectDetail.categories 사용).

@@ -5,6 +5,10 @@ from pathlib import Path
 
 from config import get_docs_root, is_single_project_mode, resolve_project_dir
 from models.schemas import Project, ProjectDetail
+from services.categories_service import (
+    extract_categories_from_file,
+    extract_categories_from_markdown,
+)
 from services.document_service import detect_orphans
 from services.index_service import parse_index
 
@@ -62,6 +66,7 @@ def get_project(name: str) -> ProjectDetail:
     has_index = index_path.exists()
     documents, worklogs = parse_index(index_path)
     orphan_files = detect_orphans(name)
+    categories = extract_categories_from_file(project_dir / "CLAUDE.md")
 
     return ProjectDetail(
         folder_name=name,
@@ -71,6 +76,7 @@ def get_project(name: str) -> ProjectDetail:
         worklogs=worklogs,
         orphan_files=orphan_files,
         has_index=has_index,
+        categories=categories,
     )
 
 
@@ -89,6 +95,47 @@ def delete_project(name: str) -> None:
     shutil.rmtree(project_dir)
 
 
+def _build_category_section(idx: int, label: str) -> str:
+    if idx == 0:
+        return (
+            f"### {idx}xx {label}\n"
+            "| 코드 | 파일명 | 요약 | 상태 |\n"
+            "|------|--------|------|------|\n"
+            "| 000 | 000_index.md | 문서 목록 + 작업 이력 마스터 인덱스 | 운영중 |\n"
+            "| - | CLAUDE.md | Agent 지시문, 코드체계 규칙 포함 | 운영중 |"
+        )
+    return (
+        f"### {idx}xx {label}\n"
+        "| 코드 | 파일명 | 요약 | 상태 |\n"
+        "|------|--------|------|------|\n"
+        "| - | (아직 없음) | - | - |"
+    )
+
+
+def _build_index_md(folder_name: str, today: str, categories: dict[int, str]) -> str:
+    sections = "\n\n".join(
+        _build_category_section(i, categories[i]) for i in range(10)
+    )
+    return f"""# 000_index — {folder_name}
+
+> 마지막 업데이트: {today}
+
+---
+
+## 문서 현황
+
+{sections}
+
+---
+
+## 작업 로그
+
+| 날짜 | 작업 내용 | 관련 문서 |
+|------|----------|----------|
+| {today} | 프로젝트 초기화, 문서 관리 템플릿 생성 | CLAUDE.md, 000_index.md |
+"""
+
+
 def init_project(num: str, title: str, preset_id: str = "default") -> str:
     from services.preset_service import get_preset_content, render_template
 
@@ -104,74 +151,8 @@ def init_project(num: str, title: str, preset_id: str = "default") -> str:
 
     template_content = get_preset_content(preset_id)
     claude_md = render_template(template_content, folder_name, title)
-
-    index_md = f"""# 000_index — {folder_name}
-
-> 마지막 업데이트: {today}
-
----
-
-## 문서 현황
-
-### 0xx 프로젝트 관리
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| 000 | 000_index.md | 문서 목록 + 작업 이력 마스터 인덱스 | 운영중 |
-| - | CLAUDE.md | Agent 지시문, 코드체계 규칙 포함 | 운영중 |
-
-### 1xx RFP/공고 분석
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 2xx 기획/전략
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 3xx 연구/조사
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 4xx 기술 설계
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 5xx 개발내용 작성
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 6xx 정량지표/성과
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 7xx 시각화/산출물
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 8xx 최종 제출문서
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
-### 9xx 참고/기타
-| 코드 | 파일명 | 요약 | 상태 |
-|------|--------|------|------|
-| - | (아직 없음) | - | - |
-
----
-
-## 작업 로그
-
-| 날짜 | 작업 내용 | 관련 문서 |
-|------|----------|----------|
-| {today} | 프로젝트 초기화, 문서 관리 템플릿 생성 | CLAUDE.md, 000_index.md |
-"""
+    categories = extract_categories_from_markdown(template_content)
+    index_md = _build_index_md(folder_name, today, categories)
 
     (project_dir / "CLAUDE.md").write_text(claude_md, encoding="utf-8")
     (project_dir / "000_index.md").write_text(index_md, encoding="utf-8")

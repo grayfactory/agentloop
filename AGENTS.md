@@ -16,7 +16,7 @@ agentloop/
 │   ├── config.py         # docs_root 관리, single/multi 모드 감지
 │   ├── models/schemas.py # Pydantic 모델 (전체 API 계약)
 │   ├── presets/          # CLAUDE.md 프리셋 JSON 파일 (default, minimal, research)
-│   ├── services/         # 비즈니스 로직 (project, document, index, preset)
+│   ├── services/         # 비즈니스 로직 (project, document, index, preset, categories)
 │   └── routers/          # HTTP 엔드포인트 (projects, documents, config, presets)
 ├── frontend/             # React SPA (:5173)
 │   └── src/
@@ -42,6 +42,7 @@ agentloop/
 | docs_root 설정 | `backend/config.py` + `<user_config_dir>/AgentLoop/config.yaml` | 런타임 변경 가능. mac: `~/Library/Application Support/AgentLoop/`, Windows: `%APPDATA%\AgentLoop\`, Linux: `~/.config/AgentLoop/` |
 | index.md 파싱 로직 | `backend/services/index_service.py` | 정규식 기반, 포맷 변경 시 주의 |
 | CLAUDE.md 프리셋 관리 | `backend/services/preset_service.py` + `backend/presets/*.json` | JSON 파일 기반 CRUD, builtin 보호 |
+| 대분류 카테고리 라벨 | `backend/services/categories_service.py` | CLAUDE.md 표를 단일 소스로 파싱. 프리셋/프로젝트의 `\| X \| 라벨 \|` 표 행에서 dict 추출, 누락분은 `DEFAULT_CATEGORY_NAMES`로 채움. 사이드바 라벨은 `ProjectDetail.categories`로 전달 |
 | 프로젝트 모드 판별 | `backend/config.py` → `is_single_project_mode()` | 폴더명 패턴 `\d{3}_.+` 기준 |
 | 문서 생성/삭제 | `backend/services/document_service.py` + `frontend/src/components/CreateDocumentModal.tsx`, `DeleteConfirmModal.tsx` | BE: create_document/delete_document, FE: 모달 UI |
 | 파일명 변경 | `backend/services/document_service.py` + `backend/routers/documents.py` + `frontend/src/components/RenameModal.tsx` | BE: rename_document (PATCH), FE: 모달 + hover 연필 버튼 |
@@ -112,4 +113,5 @@ start.bat                      # Windows: 동일
 - **코드블럭 테마**: highlight.js github-dark.css + Tailwind prose-pre 오버라이드로 다크 배경 적용.
 - **스크롤 동기화**: ⌘E 토글 시 미리보기↔편집기 간 스크롤 위치 동기화. scrollSync.ts 유틸 + rehypeSourceLine의 data-source-line 속성 활용.
 - **raw HTML 테이블**: MarkdownViewer에 rehype-raw 적용. 마크다운 내 `<table>`/`rowspan`/`colspan`/중첩 테이블 렌더링 지원 (정부양식 폼 대응). 로컬 전용 환경 전제라 sanitize 미적용. 플러그인 순서 `[rehypeRaw, rehypeHighlight, rehypeSourceLine]` 유지 필수.
+- **대분류 단일 소스**: 카테고리 라벨(0xx~9xx)은 별도 상수/UI로 중복 정의하지 않는다. **CLAUDE.md의 대분류 표가 단일 소스**. `categories_service.extract_categories_from_markdown()`가 프리셋 `content` 또는 프로젝트의 `CLAUDE.md`에서 표를 파싱 → dict 반환. `init_project()`는 같은 dict로 index.md 헤더를 렌더해 두 파일을 정합 상태로 시작. `get_project()`는 그 프로젝트의 CLAUDE.md를 매번 파싱하여 `ProjectDetail.categories`에 채움 → 사이드바가 즉시 반영. 표 누락/손상 시 `DEFAULT_CATEGORY_NAMES`로 fallback. 사용자가 기존 프로젝트의 라벨을 바꾸려면 CLAUDE.md 표만 수정하면 됨 (index.md 헤더는 자동 갱신되지 않음 — 마크다운 파일은 사용자 소유).
 - **비-텍스트 미리보기**: `documents.py` GET 엔드포인트는 `FileResponse`로 mimetype을 자동 추론 — 텍스트(.md), 이미지(.png/.jpg 등), HTML 모두 한 엔드포인트로 서빙. 프론트엔드 `ViewerPanel.classifyFile()`이 확장자로 분기해 `MarkdownViewer` / `ImageViewer` / `HtmlViewer` 중 하나를 렌더. HTML은 `<iframe sandbox="allow-scripts allow-popups allow-forms">`로 same-origin 차단 (Plotly/D3 등 인라인 JS는 정상 동작). 비-텍스트 파일은 편집/복사 버튼·⌘E 단축키가 비활성화됨. cacheBust는 `projectDetail.orphan_files[*].last_modified`에서 가져옴 — 인덱싱된(non-orphan) 비-텍스트 파일은 cacheBust 없음(브라우저 새로고침으로 대응).

@@ -66,6 +66,7 @@ export interface ProjectDetail {
   worklogs: WorkLog[];
   orphan_files: OrphanFile[];
   has_index: boolean;
+  categories: Record<number, string>;
 }
 
 export async function fetchProjects(): Promise<Project[]> {

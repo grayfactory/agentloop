@@ -1,20 +1,8 @@
 import type { Document } from '../api/client';
 
-const CATEGORY_NAMES: Record<number, string> = {
-  0: '프로젝트 관리',
-  1: 'RFP/공고 분석',
-  2: '기획/전략',
-  3: '연구/조사',
-  4: '기술 설계',
-  5: '개발내용 작성',
-  6: '정량지표/성과',
-  7: '시각화/산출물',
-  8: '최종 제출문서',
-  9: '참고/기타',
-};
-
 interface Props {
   documents: Document[];
+  categories: Record<number, string>;
   selected: string | null;
   onSelect: (filename: string, e?: React.MouseEvent) => void;
   hideEmpty?: boolean;
@@ -24,7 +12,7 @@ interface Props {
   onRename?: (filename: string) => void;
 }
 
-export default function DocumentList({ documents, selected, onSelect, hideEmpty = false, checkedDocs, onToggleCheck, onDelete, onRename }: Props) {
+export default function DocumentList({ documents, categories, selected, onSelect, hideEmpty = false, checkedDocs, onToggleCheck, onDelete, onRename }: Props) {
   const grouped = new Map<number, Document[]>();
   for (let i = 0; i <= 9; i++) grouped.set(i, []);
   for (const doc of documents) {
@@ -39,7 +27,7 @@ export default function DocumentList({ documents, selected, onSelect, hideEmpty 
         return (
         <div key={cat}>
           <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
-            {cat}xx {CATEGORY_NAMES[cat]} ({docs.length})
+            {cat}xx {categories[cat] ?? ''} ({docs.length})
           </h4>
           {docs.length === 0 ? (
             <p className="text-xs text-gray-300 pl-2">-</p>

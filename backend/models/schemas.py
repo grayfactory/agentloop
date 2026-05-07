@@ -45,6 +45,7 @@ class ProjectDetail(BaseModel):
     worklogs: list[WorkLog]
     orphan_files: list[OrphanFile]
     has_index: bool
+    categories: dict[int, str]
 
 
 class InitProjectRequest(BaseModel):

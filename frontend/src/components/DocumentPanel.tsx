@@ -178,6 +178,7 @@ export default function DocumentPanel({
         />
         <DocumentList
           documents={projectDetail.documents}
+          categories={projectDetail.categories}
           selected={selectedDoc}
           onSelect={(f, e) => handleDocClick(f, e)}
           hideEmpty

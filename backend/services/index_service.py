@@ -6,19 +6,6 @@ CATEGORY_HEADER = re.compile(r"^### (\d)xx\s+(.+)$")
 TABLE_ROW = re.compile(r"^\|\s*(\S+)\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|\s*(\S+)\s*\|$")
 WORKLOG_ROW = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|$")
 
-CATEGORY_NAMES = {
-    0: "프로젝트 관리",
-    1: "RFP/공고 분석",
-    2: "기획/전략",
-    3: "연구/조사",
-    4: "기술 설계",
-    5: "개발내용 작성",
-    6: "정량지표/성과",
-    7: "시각화/산출물",
-    8: "최종 제출문서",
-    9: "참고/기타",
-}
-
 
 def parse_index(index_path: Path) -> tuple[list[Document], list[WorkLog]]:
     if not index_path.exists():

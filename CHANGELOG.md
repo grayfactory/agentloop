@@ -3,6 +3,26 @@
 이 파일은 AgentLoop의 주요 변경사항을 기록합니다.
 포맷은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)을 따릅니다.
 
+## [1.0.2] - 2026-05-07
+
+대분류 카테고리 라벨을 단일 소스(single source of truth)로 통합. 이제 프리셋의 CLAUDE.md 표만 수정하면 새 프로젝트의 CLAUDE.md / index.md / 사이드바 라벨이 모두 한 번에 변경됩니다. 기존 프로젝트도 그 폴더의 CLAUDE.md 표만 고치면 사이드바·API 응답이 즉시 반영됩니다.
+
+### Added
+
+- **`backend/services/categories_service.py`** — 신규. `extract_categories_from_markdown(text)` 가 프리셋 `content` 또는 프로젝트 `CLAUDE.md`의 `| X | 라벨 | ... |` 표 행을 정규식으로 매칭해 0~9 dict를 반환. 누락 키는 `DEFAULT_CATEGORY_NAMES`(fallback)로 채움.
+- **`ProjectDetail.categories: dict[int, str]`** — `GET /api/projects/{name}` 응답에 카테고리 라벨 dict 추가. 매 요청마다 그 프로젝트의 CLAUDE.md를 다시 파싱해 채움.
+
+### Changed
+
+- **`backend/services/project_service.py::init_project()`** — index.md 헤더 10개를 하드코딩 문자열에서 프리셋 표 파싱 결과로 루프 렌더하도록 변경 (`_build_index_md` 헬퍼). CLAUDE.md와 index.md가 같은 dict로 생성되어 정합 보장.
+- **`frontend/src/components/DocumentList.tsx`** — 하드코딩된 `CATEGORY_NAMES` dict 삭제. `categories: Record<number, string>` prop을 받아 사용. `DocumentPanel`이 `projectDetail.categories`를 전달.
+- **`backend/services/index_service.py`** — 자체 `CATEGORY_NAMES` dict 삭제(중복 제거).
+
+### Notes
+
+- 프리셋 JSON 구조 변경 없음. 사용자는 기존 프리셋 편집 textarea에서 마크다운 표의 라벨만 고치면 됨 — 새 UI 추가되지 않음.
+- 기존 프로젝트의 `000_index.md` 헤더는 자동으로 갱신되지 않음(마크다운은 사용자 소유). 사이드바·API 응답만 즉시 반영.
+
 ## [1.0.1] - 2026-04-30
 
 Windows 셋업 안정화 패치. v1.0.0의 `setup.bat`이 macOS에서 LF 개행으로 저장되어 Windows cmd가 첫 줄에서 즉시 종료되던 버그를 해결합니다.

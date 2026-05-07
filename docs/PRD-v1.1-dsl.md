@@ -1,7 +1,7 @@
-# AgentLoop — PRD v2.3 (DSL Summary)
+# AgentLoop — PRD v2.4 (DSL Summary)
 
 > 신규 Agent 온보딩용. 이 문서만으로 프로젝트 전체 상태를 파악할 수 있어야 한다.
-> 최종 갱신: 2026-04-30
+> 최종 갱신: 2026-05-07
 
 ---
 
@@ -23,7 +23,8 @@
 ├── v2.0: CLAUDE.md 프리셋 시스템 — 프로젝트 생성 시 템플릿 선택 + 커스텀 프리셋 CRUD
 ├── v2.1: HTML 테이블 렌더링 — raw HTML 지원(rehype-raw), rowspan/colspan/중첩 테이블
 ├── v2.2: 비-텍스트 미리보기 — 이미지(PNG/JPG/SVG 등)/HTML 파일 뷰어, FileResponse + iframe
-└── v2.3: 크로스플랫폼 배포 — 단일 포트 production(StaticFiles SPA fallback), per-user config(platformdirs), Windows breadcrumb 호환, setup/start 스크립트, 릴리스 ZIP 빌드
+├── v2.3: 크로스플랫폼 배포 — 단일 포트 production(StaticFiles SPA fallback), per-user config(platformdirs), Windows breadcrumb 호환, setup/start 스크립트, 릴리스 ZIP 빌드
+└── v2.4: 대분류 카테고리 single source of truth — CLAUDE.md 표 파싱 → CLAUDE.md/index.md/사이드바 모두 한 곳에서 라벨 결정, ProjectDetail.categories API 노출
 ```
 
 ---
@@ -62,7 +63,7 @@ Document      { code, filename, summary, status, category(0~9) }
 WorkLog       { date, content, related_docs }
 OrphanFile    { filename, extension, size_bytes, last_modified }         # v1.1 NEW
 FeedbackRequest { line_number, target_text, instruction }               # v1.1 NEW
-ProjectDetail { ...Project, documents[], worklogs[], orphan_files[], has_index }
+ProjectDetail { ...Project, documents[], worklogs[], orphan_files[], has_index, categories }  # v2.4 UPD
 AppConfig     { docs_root, is_valid }                                    # v1.4 UPD
 SkillTemplate { id, name, instruction, createdAt }                      # v1.2 NEW (localStorage)
 CreateDocumentRequest { filename, content }                             # v1.3 NEW
@@ -88,6 +89,15 @@ XYZ_파일명.md
 6xx 정량지표     | 7xx 시각화/산출물 | 8xx 최종제출문서 | 9xx 참고/기타
 ```
 
+**대분류 라벨 single source of truth:**                                  # v2.4 NEW
+```
+프리셋 content 또는 프로젝트의 CLAUDE.md 안의 마크다운 표(`| X | 라벨 | ... |`)
+가 단일 소스. categories_service.extract_categories_from_markdown()이 0~9
+키 dict를 반환하며 누락 키는 DEFAULT_CATEGORY_NAMES로 채움.
+init_project(): 같은 dict로 CLAUDE.md(템플릿) + index.md 헤더(루프 렌더) 동시 생성
+get_project(): 매 요청마다 그 프로젝트의 CLAUDE.md를 파싱 → ProjectDetail.categories
+프론트엔드: DocumentList가 categories prop 사용 (하드코딩 dict 제거)
+```
 **프로젝트 폴더 감지:** `^\d{3}_.+` 패턴 매칭
 **멀티/싱글 자동 감지:**                                                  # v1.4 NEW
 ```
@@ -113,7 +123,7 @@ GET    /api/projects                              → Project[]
 POST   /api/projects        ← { num, title, preset_id? }  → { folder_name, message }  # v2.0 UPD
 DELETE /api/projects/{name}                       → { message }                 # v1.6 NEW
        # 프로젝트 디렉토리 전체 삭제 (싱글 모드 차단, 이름 패턴 검증)
-GET    /api/projects/{name}                       → ProjectDetail (orphan_files, has_index 포함)
+GET    /api/projects/{name}                       → ProjectDetail (orphan_files, has_index, categories 포함)  # v2.4 UPD
 GET    /api/projects/{name}/documents             → Document[]
 POST   /api/projects/{name}/documents             → { filename, status }       # v1.3 NEW
        ← { filename, content }
@@ -248,8 +258,9 @@ agentloop/
 │   │   └── research.json        #   연구/논문 프로젝트 프리셋
 │   ├── services/
 │   │   ├── index_service.py     # parse_index() — 정규식 md 테이블 파싱
+│   │   ├── categories_service.py # 대분류 라벨 단일 소스: CLAUDE.md 표 → dict + DEFAULT_CATEGORY_NAMES fallback  # v2.4 NEW
 │   │   ├── preset_service.py    # 프리셋 CRUD + 템플릿 렌더링                     # v2.0 NEW
-│   │   ├── project_service.py   # list/get/init/delete project + orphan 통합  # v2.0 UPD
+│   │   ├── project_service.py   # list/get/init/delete project + orphan 통합 + categories 채움  # v2.4 UPD
 │   │   └── document_service.py  # list docs, get content, get worklogs,
 │   │                            #   detect_orphans(), insert_feedback(),
 │   │                            #   create_document(), update_document_content(),  # v1.3 NEW
@@ -299,7 +310,7 @@ agentloop/
 │           │                        #   + 새 문서 버튼, 생성/삭제 모달 연동    # v1.5 UPD
 │           │                        #   + 드래그앤드롭 파일 업로드 (dragCounter 패턴)  # v1.7 NEW
 │           ├── OrphanSection.tsx     # 미분류 문서 섹션 (F3) + 체크박스 + 삭제 버튼  # v1.5 UPD
-│           ├── DocumentList.tsx      # 대분류(0~9)별 그룹핑 + hideEmpty + 체크박스 + 삭제 버튼  # v1.5 UPD
+│           ├── DocumentList.tsx      # 대분류(0~9)별 그룹핑 + hideEmpty + 체크박스 + 삭제 버튼 + categories prop  # v2.4 UPD
 │           ├── ContextBuilder.tsx    # 문서 장바구니: 프롬프트 파일 생성 + 비교 버튼  # v1.3 UPD
 │           ├── SkillTemplateSelector.tsx # 스킬 템플릿 드롭다운 + ⚙관리 버튼  # v1.3 UPD
 │           ├── SkillTemplateModal.tsx    # 스킬 템플릿 CRUD 모달
@@ -419,6 +430,12 @@ agentloop/
 | F28. Windows 경로 breadcrumb | ✅ | `BrowseResponse`에 `path_segments`(=`Path.parts`) + `separator`(=`os.sep`) 필드 추가. `DirectoryPickerModal`은 `current_path.split('/')` 대신 segments + separator로 breadcrumb 구성. POSIX `/`/Windows `C:\` 모두 정상 표시. |
 | F29. setup/start 스크립트 | ✅ | repo root `setup.sh/.bat` (uv 자동 설치 + uv sync + frontend 빌드 가드), `start.sh/.bat` (브라우저 자동 오픈 + uvicorn). 비개발자 더블클릭 흐름 지원. |
 | F30. 릴리스 빌드 스크립트 | ✅ | `scripts/build-release.sh <version>` — frontend 빌드 + 정확한 파일만 ZIP 패키징. `backend/config.yaml` 누출 검증 (있으면 빌드 실패). `frontend/src`, `node_modules`, `.venv`, `__pycache__` 모두 제외. `docs/RELEASING.md`에 상세 절차. |
+
+### Phase 14 (대분류 카테고리 단일 소스) — ✅ 완료
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| F31. 카테고리 라벨 SSoT | ✅ | 신규 `categories_service.py` — `extract_categories_from_markdown(text)`가 프리셋 `content` 또는 프로젝트 `CLAUDE.md`의 `\| X \| 라벨 \|` 표 행을 정규식 매칭하여 0~9 dict 반환. 누락 키는 `DEFAULT_CATEGORY_NAMES`로 채움. `init_project()`는 같은 dict로 CLAUDE.md(템플릿 그대로) + index.md 헤더(`_build_index_md` 루프 렌더) 동시 생성 → 정합 보장. `get_project()`는 매 요청마다 그 프로젝트의 CLAUDE.md를 파싱하여 `ProjectDetail.categories`에 채움. 프론트엔드 `DocumentList.tsx`의 하드코딩 `CATEGORY_NAMES` 제거 → `categories` prop 수신. `DocumentPanel.tsx`가 `projectDetail.categories`를 전달. `index_service.py`의 자체 `CATEGORY_NAMES` dict 삭제 (중복 제거). 사용자가 프리셋 또는 기존 프로젝트의 CLAUDE.md 표 라벨을 수정하면 사이드바/API 응답에 즉시 반영 (기존 index.md 헤더는 자동 갱신 없음 — 사용자 소유). |
 
 ---
 
@@ -720,4 +737,28 @@ v2.2 → v2.3 주요 변경:
 │              frontend/src, __pycache__, *.pyc, .DS_Store
 │       docs/RELEASING.md (신규): 빌드/검증/Windows VM 검증 절차 문서
 └── 컴포넌트 수: 23개 (변경 없음, DirectoryPickerModal 내부 수정만)
+
+v2.3 → v2.4 주요 변경:
+├── F31: 대분류 카테고리 라벨 single source of truth
+│       Backend 신규 services/categories_service.py
+│         DEFAULT_CATEGORY_NAMES 상수 (fallback)
+│         extract_categories_from_markdown(text) — `| X | 라벨 |` 표 행 파싱
+│         extract_categories_from_file(path) — 파일 wrapper, 누락 시 fallback
+│       services/project_service.py:
+│         init_project() — 하드코딩 `### 0xx ~ 9xx` 헤더 블록(60+줄) 제거
+│           preset content 파싱 → dict로 _build_index_md() 루프 렌더
+│           새 헬퍼 _build_category_section(idx, label) + _build_index_md()
+│         get_project() — 그 프로젝트의 CLAUDE.md를 매 호출마다 파싱하여
+│           ProjectDetail.categories 채움 (extract_categories_from_file)
+│       services/index_service.py — 자체 CATEGORY_NAMES dict 삭제 (중복 제거)
+│       models/schemas.py — ProjectDetail에 categories: dict[int, str] 필드 추가
+│       Frontend api/client.ts — ProjectDetail 인터페이스에 categories 추가
+│       components/DocumentList.tsx — 하드코딩 CATEGORY_NAMES dict 삭제
+│         categories: Record<number, string> prop 수신, `categories[cat] ?? ''`
+│       components/DocumentPanel.tsx — projectDetail.categories를 DocumentList에 전달
+│       AGENTS.md(루트/backend/frontend), README.md — 변경 가이드 + anti-pattern 추가
+├── 프리셋 JSON 구조 변경 없음, 신규 UI 없음 — 사용자는 기존 프리셋 textarea에서
+│   `### 대분류표`의 마크다운 표 라벨만 고치면 새 프로젝트 + 사이드바에 자동 반영
+├── 기존 프로젝트 호환: CLAUDE.md 표가 있으면 그대로 파싱, 없거나 손상되면 fallback
+└── 컴포넌트 수: 23개 (변경 없음, props 시그니처 + 백엔드 service 1개 추가)
 ```
