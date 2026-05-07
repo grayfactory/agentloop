@@ -34,12 +34,14 @@ cp -R \
 
 cp -R frontend/dist "${STAGE}/frontend/"
 cp package.json "${STAGE}/"
-cp setup.sh setup.bat start.sh start.bat README.md "${STAGE}/"
+cp setup.sh setup.bat setup-debug.bat start.sh start.bat README.md "${STAGE}/"
 cp docs/RELEASING.md "${STAGE}/docs/" 2>/dev/null || true
 
 find "${STAGE}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 find "${STAGE}" -type f -name "*.pyc" -delete 2>/dev/null || true
 find "${STAGE}" -type f -name ".DS_Store" -delete 2>/dev/null || true
+
+find "${STAGE}" -maxdepth 1 -type f -name "*.bat" -exec perl -pi -e 's/\r?\n/\r\n/g' {} +
 
 if [ -f "${STAGE}/backend/config.yaml" ]; then
   echo "ERROR: ${STAGE}/backend/config.yaml 이 포함되어 있습니다 (사용자 path 누출 위험)." >&2

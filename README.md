@@ -167,7 +167,8 @@ AgentLoop는 두 가지 사용 방식을 지원합니다.
 
 | 증상 | 원인 / 해결 |
 |------|-------------|
-| `setup.bat` 실행 직후 `ERROR: Python 3.13+ 가 필요합니다` | Python이 설치되지 않았거나 PATH에 없음. python.org 인스톨러 재실행 → "Add python.exe to PATH" 체크 → 다시 설치 |
+| `setup.bat` 실행 직후 콘솔 창이 깜빡이며 사라짐 (출력 안 보임) | 보통 어딘가에서 즉시 종료된 경우. **`setup-debug.bat`을 더블클릭**하면 단계마다 멈추며 어디서 실패하는지 출력됩니다. 캡처해서 공유하세요 |
+| `setup.bat` 실행 직후 `ERROR: Python을 찾을 수 없습니다` | python.org 인스톨러 재실행 → "Add python.exe to PATH" 체크 → 다시 설치. 또는 MS Store에서 "Python 3.13" 정식 설치 (App Execution Alias만으로는 부족) |
 | `setup.bat`을 두 번 실행해도 uv를 못 찾음 | PowerShell 실행 정책 문제일 수 있음. PowerShell을 **관리자 권한**으로 열고 `irm https://astral.sh/uv/install.ps1 \| iex` 직접 실행 |
 | `start.bat` 실행 직후 콘솔 창이 바로 닫힘 | 보통 포트 8066이 이미 사용 중. 콘솔에서 `cd backend && uv run uvicorn main:app --port 8066` 직접 실행해 에러 메시지 확인 |
 | `Address already in use` / `[errno 48]` | 다른 프로그램이 8066 포트 사용 중. 해당 프로그램 종료 또는 (개발자) `--port 8077` 등 다른 포트로 실행 |

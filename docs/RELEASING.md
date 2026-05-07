@@ -33,9 +33,12 @@ agentloop-<version>/
 │   └── RELEASING.md
 ├── package.json
 ├── setup.sh / setup.bat
+├── setup-debug.bat              ← Windows 진단용 (단계마다 pause)
 ├── start.sh / start.bat
 └── README.md
 ```
+
+빌드 단계에서 모든 `*.bat` 파일은 자동으로 CRLF 개행으로 변환된다 (macOS/Linux의 LF only 저장 시 Windows cmd가 즉시 종료되는 문제 방지).
 
 ## 제외되는 파일
 
