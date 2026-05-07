@@ -3,6 +3,25 @@
 이 파일은 AgentLoop의 주요 변경사항을 기록합니다.
 포맷은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)을 따릅니다.
 
+## [1.0.1] - 2026-04-30
+
+Windows 셋업 안정화 패치. v1.0.0의 `setup.bat`이 macOS에서 LF 개행으로 저장되어 Windows cmd가 첫 줄에서 즉시 종료되던 버그를 해결합니다.
+
+### Fixed
+
+- **Windows: `setup.bat` / `start.bat` 즉시 종료** — 빌드 시 모든 `*.bat` 파일을 자동으로 CRLF 개행으로 변환. macOS/Linux 편집기로 저장된 LF only 파일도 ZIP 생성 시 정상화됨.
+- **Windows: 한글 echo 깨짐** — `setup.bat` / `start.bat`에 `chcp 65001` 추가.
+
+### Changed
+
+- **Windows: MS Store Python 호환성** — `py -3` launcher를 우선 사용하고, 없으면 `python`로 fallback. App Execution Alias의 stub `python.exe`가 잡히는 문제를 회피하고 Python 3.13+ 버전을 명시적으로 검증.
+- **Windows: uv 자동 설치 후 1회 실행으로 셋업 완료** — PATH가 갱신되지 않아도 `%USERPROFILE%\.local\bin\uv.exe`를 직접 사용하도록 fallback 추가. 이전엔 콘솔을 닫고 다시 실행해야 했음.
+- **Windows: 콘솔 즉시 닫힘 방지 강화** — `setlocal enabledelayedexpansion`, `pushd`/`popd`, 모든 에러 분기와 종료 직전에 `pause` 보장. `start.bat`도 uvicorn 종료 후 `pause`.
+
+### Added
+
+- **`setup-debug.bat`** — Windows 진단용 스크립트. `@echo on` + 단계마다 `pause`로 Python/uv 탐색, `uv sync` 실행, `frontend\dist` 존재 여부를 차례로 확인할 수 있어 셋업 실패 위치를 즉시 특정 가능.
+
 ## [1.0.0] - 2026-04-30
 
 AgentLoop의 첫 정식 배포판. 크로스 플랫폼(macOS / Windows) 배포를 위한 production 빌드 스크립트, setup/start 런처, 그리고 누적된 에디터·뷰어 기능을 포함합니다.
