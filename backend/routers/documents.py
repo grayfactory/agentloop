@@ -37,7 +37,7 @@ def get_document(name: str, filename: str):
     file_path = resolve_project_dir(name) / filename
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {filename}")
-    return FileResponse(file_path)
+    return FileResponse(file_path, headers={"Cache-Control": "no-cache"})
 
 
 @router.post("/documents/{filename}/feedback")
