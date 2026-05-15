@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import get_docs_root, is_docs_root_valid
-from routers import projects, documents, presets
+from routers import projects, documents, presets, fs
 from routers import config as config_router
 
 app = FastAPI(title="AgentLoop", version="2.0.0")
@@ -22,6 +22,7 @@ app.include_router(projects.router)
 app.include_router(documents.router)
 app.include_router(config_router.router)
 app.include_router(presets.router)
+app.include_router(fs.router)
 
 
 @app.get("/api/health")

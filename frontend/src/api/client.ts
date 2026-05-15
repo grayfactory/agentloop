@@ -305,3 +305,66 @@ export async function browsePath(path?: string): Promise<BrowseResponse> {
   }
   return res.json();
 }
+
+export interface FsFile {
+  name: string;
+  path: string;
+  extension: string;
+  size_bytes: number;
+  last_modified: string;
+}
+
+export interface FsListResponse {
+  current_path: string;
+  parent_path: string | null;
+  directories: DirectoryEntry[];
+  files: FsFile[];
+  path_segments: string[];
+  separator: string;
+}
+
+export async function fetchFsList(path?: string): Promise<FsListResponse> {
+  const params = path ? `?path=${encodeURIComponent(path)}` : '';
+  const res = await fetch(`${BASE}/fs/list${params}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '디렉토리 탐색 실패');
+  }
+  return res.json();
+}
+
+export function fsFileUrl(path: string, cacheBust?: string | number): string {
+  const base = `${BASE}/fs/file?path=${encodeURIComponent(path)}`;
+  return cacheBust ? `${base}&t=${encodeURIComponent(String(cacheBust))}` : base;
+}
+
+export async function fetchFsFileContent(path: string): Promise<string> {
+  const res = await fetch(fsFileUrl(path));
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '파일 불러오기 실패');
+  }
+  return res.text();
+}
+
+export async function updateFsFileContent(path: string, content: string): Promise<void> {
+  const res = await fetch(`${BASE}/fs/file?path=${encodeURIComponent(path)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '파일 저장 실패');
+  }
+}
+
+export async function pickFolder(): Promise<string | null> {
+  const res = await fetch(`${BASE}/fs/pick_folder`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '폴더 선택 실패');
+  }
+  const data = (await res.json()) as { path: string | null };
+  return data.path;
+}

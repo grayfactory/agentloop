@@ -92,3 +92,24 @@ class UploadError(BaseModel):
 class UploadResult(BaseModel):
     uploaded: list[str]
     errors: list[UploadError]
+
+
+class FsFile(BaseModel):
+    name: str
+    path: str
+    extension: str
+    size_bytes: int
+    last_modified: datetime
+
+
+class FsListResponse(BaseModel):
+    current_path: str
+    parent_path: str | None
+    directories: list[DirectoryEntry]
+    files: list[FsFile]
+    path_segments: list[str]
+    separator: str
+
+
+class FsWriteRequest(BaseModel):
+    content: str
